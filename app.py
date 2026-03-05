@@ -69,13 +69,22 @@ app.layout = serve_layout
     Input("auth-store", "data"),
 )
 def route(pathname, auth_data):
-    from pages import login, dashboard, students, courses, sessions, analytics, reports, settings_page
-    is_auth = auth_data and auth_data.get("authenticated")
+    try:
+        from pages import login, dashboard, students, courses, sessions, analytics, reports, settings_page, grades
+        is_auth = auth_data and auth_data.get("authenticated")
 
-    if not is_auth:
-        return login.layout()
+        if not is_auth:
+            return login.layout()
 
-    return shell_layout(pathname)
+        return shell_layout(pathname)
+    except Exception as e:
+        import traceback
+        err_msg = f"Erreur de routage: {e}\n{traceback.format_exc()}"
+        print(err_msg)
+        return html.Div([
+            html.H3("Erreur Critique d'Application", style={"color": "#ef4444"}),
+            html.Pre(err_msg, style={"background": "#f8fafc", "padding": "1rem", "borderRadius": "10px"})
+        ], style={"padding": "2rem"})
 
 
 def shell_layout(pathname):
@@ -148,23 +157,27 @@ def shell_layout(pathname):
     ])
 
     # Page content routing
-    from pages import dashboard, students, courses, sessions, grades, analytics, reports, settings_page
-    page_map = {
-        "/": dashboard.layout,
-        "/students": students.layout,
-        "/courses": courses.layout,
-        "/sessions": sessions.layout,
-        "/grades": grades.layout,
-        "/analytics": analytics.layout,
-        "/reports": reports.layout,
-        "/settings": settings_page.layout,
-    }
-
-    page_fn = page_map.get(pathname, dashboard.layout)
     try:
+        from pages import dashboard, students, courses, sessions, grades, analytics, reports, settings_page
+        page_map = {
+            "/": dashboard.layout,
+            "/students": students.layout,
+            "/courses": courses.layout,
+            "/sessions": sessions.layout,
+            "/grades": grades.layout,
+            "/analytics": analytics.layout,
+            "/reports": reports.layout,
+            "/settings": settings_page.layout,
+        }
+
+        page_fn = page_map.get(pathname, dashboard.layout)
         page_content = page_fn()
     except Exception as e:
-        page_content = html.Div(f"Erreur: {e}", style={"color": "red", "padding": "2rem"})
+        import traceback
+        page_content = html.Div([
+            html.H3("Erreur de chargement de page", style={"color": "red"}),
+            html.Pre(f"{e}\n{traceback.format_exc()}", style={"fontSize": ".8rem", "background": "#fff1f1", "padding": "1rem"})
+        ], style={"padding": "2rem"})
 
     return html.Div([
         sidebar,
