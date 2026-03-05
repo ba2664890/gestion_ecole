@@ -1,0 +1,33 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# render.yaml – Render Blueprint (Infrastructure as Code)
+# Dépose ce fichier à la racine de votre dépôt GitHub
+# Render le détecte automatiquement lors de la connexion du repo
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  - type: web
+    name: sga-academique
+    runtime: docker           # Utilise le Dockerfile
+    dockerfilePath: ./Dockerfile
+    region: frankfurt         # eu-central (choisissez: oregon | frankfurt | singapore | ohio)
+    plan: free                # free | starter | standard | pro
+    
+    # Variables d'environnement (Render les injecte dans le conteneur)
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://neondb_owner:npg_IOEvtGp5oF2B@ep-orange-king-aiiqaabt-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+
+      - key: SECRET_KEY
+        generateValue: true   # Render génère une valeur aléatoire sécurisée automatiquement
+
+      - key: PYTHON_VERSION
+        value: "3.11"
+
+      - key: PORT
+        value: "8050"
+
+    # Healthcheck (Render vérifie que l'app est bien démarrée)
+    healthCheckPath: /
+
+    # Auto-deploy à chaque push sur main/master
+    autoDeploy: true
