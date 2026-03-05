@@ -210,12 +210,10 @@ def shell_layout(pathname):
                     }),
                     html.Div([
                         html.Span("notifications", className="material-symbols-outlined"),
-                    ], style={
-                        "width": "38px", "height": "38px", "borderRadius": "10px",
-                        "background": "#fff", "border": "1px solid #e2e8f0",
-                        "display": "flex", "alignItems": "center", "justifyContent": "center",
-                        "cursor": "pointer", "color": "#64748b",
-                    }),
+                    ], className="topbar-btn"),
+                    html.Div([
+                        html.Span("account_circle", className="material-symbols-outlined"),
+                    ], className="topbar-btn"),
                 ], style={"display": "flex", "alignItems": "center", "gap": ".75rem"}),
             ]),
             # Page content

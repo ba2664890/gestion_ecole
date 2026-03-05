@@ -26,20 +26,38 @@ def get_stats():
         absents = db.query(Attendance).filter_by(absent=True).count()
         att_rate = ((total_att - absents) / total_att * 100) if total_att > 0 else 100
 
-        # Recent sessions
-        recent_sessions = (
+        # Recent sessions (pre-format to avoid lazy loading)
+        sessions_raw = (
             db.query(Session)
             .order_by(Session.date.desc())
             .limit(5)
             .all()
         )
+        recent_sessions = []
+        for s in sessions_raw:
+            recent_sessions.append({
+                "theme": s.theme,
+                "date": s.date,
+                "duree": s.duree,
+                "course_code": s.course.code if s.course else "???"
+            })
 
         # Grade distribution
         grades = db.query(Grade.note).all()
         grade_values = [g[0] for g in grades]
 
-        # Course progress
-        courses = db.query(Course).all()
+        # Course progress (pre-calculate to avoid lazy loading)
+        courses_raw = db.query(Course).all()
+        courses_data = []
+        for c in courses_raw:
+            courses_data.append({
+                "code": c.code,
+                "libelle": c.libelle,
+                "progression": c.progression,
+                "heures_effectuees": c.heures_effectuees,
+                "volume_horaire": c.volume_horaire,
+                "enseignant": c.enseignant
+            })
 
         return {
             "total_students": total_students,
@@ -49,7 +67,7 @@ def get_stats():
             "att_rate": round(att_rate, 1),
             "recent_sessions": recent_sessions,
             "grade_values": grade_values,
-            "courses": courses,
+            "courses": courses_data,
         }
     finally:
         db.close()
@@ -261,13 +279,13 @@ def _quick_action(icon, label, href, color):
 
 
 def _course_progress_row(course):
-    pct = course.progression
+    pct = course["progression"]
     color = "success" if pct >= 80 else ("danger" if pct < 30 else "")
     return html.Div(style={"display": "flex", "flexDirection": "column", "gap": ".4rem"}, children=[
         html.Div(style={"display": "flex", "justifyContent": "space-between", "alignItems": "center"}, children=[
             html.Div([
-                html.Span(course.code, className="badge badge-blue", style={"marginRight": ".5rem"}),
-                html.Span(course.libelle, style={"fontSize": ".85rem", "fontWeight": "500"}),
+                html.Span(course["code"], className="badge badge-blue", style={"marginRight": ".5rem"}),
+                html.Span(course["libelle"], style={"fontSize": ".85rem", "fontWeight": "500"}),
             ]),
             html.Span(f"{pct:.0f}%", style={
                 "fontSize": ".8rem", "fontWeight": "700",
@@ -277,7 +295,7 @@ def _course_progress_row(course):
         html.Div(className="progress-wrap", children=[
             html.Div(className=f"progress-fill {color}", style={"width": f"{pct:.0f}%"}),
         ]),
-        html.Div(f"{course.heures_effectuees:.0f}h / {course.volume_horaire:.0f}h — {course.enseignant}",
+        html.Div(f"{course['heures_effectuees']:.0f}h / {course['volume_horaire']:.0f}h — {course['enseignant']}",
                  style={"fontSize": ".75rem", "color": "#94a3b8"}),
     ])
 
@@ -297,12 +315,12 @@ def _session_row(session):
             html.Span("today", className="material-symbols-outlined", style={"fontSize": "1rem", "color": "var(--primary)"}),
         ]),
         html.Div([
-            html.Div(session.theme[:50] + ("..." if len(session.theme) > 50 else ""),
+            html.Div(session["theme"][:50] + ("..." if len(session["theme"]) > 50 else ""),
                      style={"fontSize": ".875rem", "fontWeight": "600"}),
             html.Div(style={"display": "flex", "gap": ".5rem", "marginTop": ".2rem", "alignItems": "center"}, children=[
-                html.Span(str(session.date), style={"fontSize": ".75rem", "color": "#94a3b8"}),
+                html.Span(str(session["date"]), style={"fontSize": ".75rem", "color": "#94a3b8"}),
                 html.Span("•", style={"color": "#e2e8f0"}),
-                html.Span(f"{session.duree}h", style={"fontSize": ".75rem", "color": "#94a3b8"}),
+                html.Span(f"{session['duree']}h", style={"fontSize": ".75rem", "color": "#94a3b8"}),
             ]),
         ]),
     ])

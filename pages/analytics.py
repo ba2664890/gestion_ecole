@@ -110,10 +110,12 @@ def make_histogram(notes):
         fig.add_vline(x=mean, line_dash="dash", line_color="#ef4444",
                       annotation_text=f"Moy: {mean:.1f}", annotation_position="top right")
 
+    layout = {**CHART_LAYOUT, "height": 300}
+    layout["xaxis"] = {**layout.get("xaxis", {}), "title": "Note /20", "range": [0, 20]}
+    layout["yaxis"] = {**layout.get("yaxis", {}), "title": "Nb étudiants"}
+    
     fig.update_layout(
-        **{**CHART_LAYOUT, "height": 300},
-        xaxis={"title": "Note /20", "range": [0, 20], "gridcolor": "#f1f5f9"},
-        yaxis={"title": "Nb étudiants", "gridcolor": "#f1f5f9"},
+        **layout,
         bargap=0.05,
     )
     return fig
@@ -137,10 +139,12 @@ def make_course_comparison(course_avgs):
     ))
     fig.add_hline(y=10, line_dash="dot", line_color="#f59e0b",
                   annotation_text="Seuil 10/20", annotation_position="right")
+    layout = {**CHART_LAYOUT}
+    layout["xaxis"] = {**layout.get("xaxis", {}), "title": "Cours", "gridcolor": "transparent"}
+    layout["yaxis"] = {**layout.get("yaxis", {}), "title": "Moyenne /20", "range": [0, 21]}
+    
     fig.update_layout(
-        **{**CHART_LAYOUT},
-        xaxis={"title": "Cours", "gridcolor": "transparent"},
-        yaxis={"title": "Moyenne /20", "range": [0, 21]},
+        **layout,
         showlegend=False,
     )
     return fig
@@ -167,11 +171,11 @@ def make_attendance_line(att_data):
     ))
     fig.add_hline(y=90, line_dash="dot", line_color="#f59e0b",
                   annotation_text="Seuil 90%", annotation_position="right")
-    fig.update_layout(
-        **{**CHART_LAYOUT},
-        xaxis={"title": "Date"},
-        yaxis={"title": "Taux (%)", "range": [60, 101], "ticksuffix": "%"},
-    )
+    layout = {**CHART_LAYOUT}
+    layout["xaxis"] = {**layout.get("xaxis", {}), "title": "Date"}
+    layout["yaxis"] = {**layout.get("yaxis", {}), "title": "Taux (%)", "range": [60, 101], "ticksuffix": "%"}
+    
+    fig.update_layout(**layout)
     return fig
 
 

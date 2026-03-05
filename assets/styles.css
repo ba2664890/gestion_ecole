@@ -242,6 +242,27 @@ a {
   gap: 1rem;
 }
 
+.topbar-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #64748b;
+  transition: all 0.2s;
+}
+
+.topbar-btn:hover {
+  background: #f8fafc;
+  color: var(--primary);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
 #page-content {
   flex: 1;
   padding: 2rem;
