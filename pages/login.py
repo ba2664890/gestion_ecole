@@ -9,7 +9,7 @@ from models import SessionLocal, User
 
 
 def layout():
-    return html.Div(id="login-page", children=[
+    return html.Div(id="login-page", style={"minHeight": "100vh"}, children=[
         # Left decorative panel
         html.Div(className="login-left", children=[
             # Video background (university ambiance)
@@ -100,7 +100,7 @@ def layout():
 
         # Right auth panel
         html.Div(className="login-right", children=[
-            html.Div(style={"width": "100%", "maxWidth": "460px"}, children=[
+            html.Div(style={"width": "100%", "maxWidth": "500px"}, children=[
 
                 # Mobile logo
                 html.Div(style={"marginBottom": "2rem"}, children=[

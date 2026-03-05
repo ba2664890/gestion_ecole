@@ -640,8 +640,8 @@ a {
 }
 
 .login-right {
-  flex: 0 0 540px;
-  /* Increased from 480px */
+  flex: 0 0 600px;
+  /* Increased from 540px to 600px */
   display: flex;
   align-items: center;
   justify-content: center;

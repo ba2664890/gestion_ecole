@@ -12,6 +12,10 @@ import hashlib
 import os
 
 from models import init_db, SessionLocal, User
+from pages import (
+    login, dashboard, students, courses, sessions, 
+    analytics, reports, settings_page, grades
+)
 
 # Init DB on startup
 init_db()
@@ -25,7 +29,7 @@ server.secret_key = os.environ.get("SECRET_KEY", "sga-secret-key-2024-ultra-secu
 app = Dash(
     __name__,
     server=server,
-    use_pages=True,
+    use_pages=False,
     external_stylesheets=[
         "https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800;900&display=swap",
         "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap",
@@ -70,7 +74,6 @@ app.layout = serve_layout
 )
 def route(pathname, auth_data):
     try:
-        from pages import login, dashboard, students, courses, sessions, analytics, reports, settings_page, grades
         is_auth = auth_data and auth_data.get("authenticated")
 
         if not is_auth:
@@ -158,7 +161,6 @@ def shell_layout(pathname):
 
     # Page content routing
     try:
-        from pages import dashboard, students, courses, sessions, grades, analytics, reports, settings_page
         page_map = {
             "/": dashboard.layout,
             "/students": students.layout,
