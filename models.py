@@ -121,7 +121,12 @@ class User(Base):
 
 def init_db():
     """Initialize database tables and seed default data."""
-    Base.metadata.create_all(bind=engine)
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        print(f"Warning during create_all: {e}")
+        # Sometimes sequences already exist even if tables don't, 
+        # but create_all might still have created the tables.
 
     db = SessionLocal()
     try:
@@ -136,6 +141,7 @@ def init_db():
                 email="admin@sga.edu"
             )
             db.add(admin)
+            db.commit() # Commit admin early
 
         # Seed some demo data if empty
         if db.query(Student).count() == 0:
@@ -151,9 +157,12 @@ def init_db():
             ]
             from datetime import date
             for nom, prenom, email, dob in students_data:
-                s = Student(nom=nom, prenom=prenom, email=email,
-                           date_naissance=date.fromisoformat(dob))
-                db.add(s)
+                # Double check uniqueness before adding
+                if not db.query(Student).filter_by(email=email).first():
+                    s = Student(nom=nom, prenom=prenom, email=email,
+                               date_naissance=date.fromisoformat(dob))
+                    db.add(s)
+            db.commit()
 
         if db.query(Course).count() == 0:
             courses_data = [
@@ -164,10 +173,11 @@ def init_db():
                 ("FRAN101", "Littérature Française", 30, "Mme. Touré"),
             ]
             for code, libelle, vh, ens in courses_data:
-                c = Course(code=code, libelle=libelle, volume_horaire=vh, enseignant=ens)
-                db.add(c)
+                if not db.query(Course).filter_by(code=code).first():
+                    c = Course(code=code, libelle=libelle, volume_horaire=vh, enseignant=ens)
+                    db.add(c)
+            db.commit()
 
-        db.commit()
     except Exception as e:
         db.rollback()
         print(f"Error seeding data: {e}")
