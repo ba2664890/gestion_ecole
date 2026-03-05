@@ -100,7 +100,7 @@ def layout():
 
         # Right auth panel
         html.Div(className="login-right", children=[
-            html.Div(style={"width": "100%", "maxWidth": "420px"}, children=[
+            html.Div(style={"width": "100%", "maxWidth": "460px"}, children=[
 
                 # Mobile logo
                 html.Div(style={"marginBottom": "2rem"}, children=[
@@ -181,7 +181,7 @@ def layout():
                             ),
                         ]),
                         html.Div(style={"textAlign": "right", "marginTop": ".5rem"}, children=[
-                            html.Small("Mot de passe oublié ?", style={"color": "var(--primary)", "fontSize": ".8rem", "cursor": "pointer"}),
+                            html.A("Mot de passe oublié ?", href="#", style={"color": "var(--primary)", "fontSize": ".8rem", "textDecoration": "none"}),
                         ]),
                     ]),
 
@@ -252,6 +252,7 @@ def _stat_pill(icon, label, value):
     prevent_initial_call=True,
 )
 def do_login(n_clicks, n_submit, username, password):
+    print(f"DEBUG: do_login called with n_clicks={n_clicks}, n_submit={n_submit}, user={username}")
     if not username or not password:
         return no_update, {"display": "block"}, "Veuillez remplir tous les champs."
 
