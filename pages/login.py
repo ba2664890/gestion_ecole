@@ -15,7 +15,7 @@ def layout():
             # Video background (university ambiance)
             html.Div(className="hero-video-wrap", children=[
                 html.Video(
-                    autoPlay=True, loop=True, muted=True, playsInline=True,
+                    autoPlay=True, loop=True, muted=True,
                     children=[
                         html.Source(
                             src="https://cdn.pixabay.com/video/2022/06/27/121837-726040052_large.mp4",
