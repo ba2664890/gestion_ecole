@@ -9,7 +9,7 @@ services:
     name: sga-academique
     runtime: docker           # Utilise le Dockerfile
     dockerfilePath: ./Dockerfile
-    region: frankfurt         # eu-central (choisissez: oregon | frankfurt | singapore | ohio)
+    region: ohio              # us-east-2 (plus proche de la DB Neon en us-east-1)
     plan: free                # free | starter | standard | pro
     
     # Variables d'environnement (Render les injecte dans le conteneur)

@@ -53,7 +53,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 CMD gunicorn \
     --bind 0.0.0.0:${PORT:-8050} \
     --workers 2 \
-    --threads 4 \
+    --threads 2 \
     --timeout 120 \
     --keep-alive 5 \
     --log-level info \
