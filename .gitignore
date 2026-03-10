@@ -26,5 +26,4 @@ env/
 *.log
 
 # Données locales
-*.sqlite
-*.db
+
