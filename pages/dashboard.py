@@ -1,7 +1,8 @@
 from dash import html, dcc, Input, Output, callback, no_update
 import plotly.graph_objects as go
 from sqlalchemy import func, select, case, desc
-from models import SessionLocal, Student, Course, Session as DBSession, Attendance, Grade
+from models import SessionLocal, Student, Course, Session as DBSession, Attendance, Grade, Project
+from sqlalchemy.orm import joinedload
 import time
 from datetime import datetime, timedelta
 
@@ -26,18 +27,25 @@ def get_stats(force_refresh=False):
         presents = db.query(func.count(Attendance.id)).filter(Attendance.absent == False).scalar() or 0
         att_rate = (presents / total_att * 100) if total_att > 0 else 100
 
-        # ── Grade Distribution (Optimized SQL) ──────────────────────────────
-        # SQL CASE allows us to get the histogram bins in one query
-        bins = [
-            case((Grade.note < 5, "0-5"), else_=None),
-            case(((Grade.note >= 5) & (Grade.note < 10), "5-10"), else_=None),
-            case(((Grade.note >= 10) & (Grade.note < 12), "10-12"), else_=None),
-            case(((Grade.note >= 12) & (Grade.note < 14), "12-14"), else_=None),
-            case(((Grade.note >= 14) & (Grade.note < 16), "14-16"), else_=None),
-            case((Grade.note >= 16, "16-20"), else_=None),
+        # Today's sessions (Student Life Widget)
+        today = datetime.now().date()
+        today_sessions_query = db.query(DBSession).options(joinedload(DBSession.course))\
+            .filter(DBSession.date == today).order_by(DBSession.start_time).all()
+        today_sessions = [
+            {"time": s.start_time, "title": s.course.libelle if s.course else s.theme, 
+             "sub": s.course.enseignant if s.course else "ENSAE", "color": "badge-blue"}
+            for s in today_sessions_query
         ]
-        # This is a slightly complex query, let's stick to a simpler count group by floor
-        # or just fetch values if N is small, but let's do it robustly.
+
+        # Project Deadlines (Student Life Widget)
+        deadlines_query = db.query(Project).options(joinedload(Project.course))\
+            .filter(Project.status != "Done").order_by(Project.deadline).limit(3).all()
+        deadlines = [
+            {"title": p.title, "deadline": p.deadline, "progress": p.progress, "color": "#6366f1"}
+            for p in deadlines_query
+        ]
+
+        # ── Grade Distribution (Optimized SQL) ──────────────────────────────
         dist_query = db.query(
             case(
                 (Grade.note < 10, "Insuffisant"),
@@ -93,6 +101,8 @@ def get_stats(force_refresh=False):
                 "attendance": round(att_rate, 1),
                 "avg_grade": round(avg_grade, 2)
             },
+            "today_sessions": today_sessions,
+            "deadlines": deadlines,
             "grade_dist": grade_dist,
             "att_trend": att_trend,
             "subject_perf": subject_perf,
@@ -212,19 +222,40 @@ def refresh_dashboard(n):
     s = get_stats()
     
     return html.Div([
-        # KPIs
-        html.Div(className="dash-kpi-grid", style={
-            "display": "grid", "gridTemplateColumns": "repeat(auto-fit, minmax(200px, 1fr))",
-            "gap": "1rem", "marginBottom": "1.5rem"
-        }, children=[
-            _kpi("group", s["kpis"]["students"], "Étudiants", "+12%", "blue"),
-            _kpi("library_books", s["kpis"]["courses"], "Cours", "Stable", "purple"),
-            _kpi("event_available", f"{s['kpis']['attendance']}%", "Présences", "-0.5%", "green"),
-            _kpi("school", f"{s['kpis']['avg_grade']}", "Moyenne", "+0.2", "amber"),
+        # KPIs + Today's Schedule
+        html.Div(style={"display": "grid", "gridTemplateColumns": "1fr 1fr 1fr 2fr", "gap": "1.25rem", "marginBottom": "1.5rem"}, children=[
+            html.Div(style={"display": "flex", "flexDirection": "column", "gap": "1rem"}, children=[
+                _kpi("group", s["kpis"]["students"], "Étudiants", "blue"),
+                _kpi("grade", s["kpis"]["avg_grade"], "Moyenne", "purple"),
+            ]),
+            html.Div(style={"display": "flex", "flexDirection": "column", "gap": "1rem"}, children=[
+                _kpi("event_available", f"{s['kpis']['attendance']}%", "Présences", "green"),
+                _kpi("library_books", s["kpis"]["courses"], "Cours", "amber"),
+            ]),
+            # Quick Actions (Moved here)
+            html.Div(className="sga-card", style={"padding": "1rem", "background": "linear-gradient(135deg, #1e293b, #0f172a)", "color": "white"}, children=[
+                html.H4("Raccourcis", style={"margin": "0 0 .75rem 0", "fontSize": ".85rem", "color": "rgba(255,255,255,0.7)"}),
+                html.Div(style={"display": "flex", "flexDirection": "column", "gap": ".5rem"}, children=[
+                    _dash_action("add_circle", "Séance", "/sessions", "rgba(255, 255, 255, 0.08)"),
+                    _dash_action("upload", "Notes", "/grades", "rgba(255, 255, 255, 0.08)"),
+                    _dash_action("event", "Planning", "/schedule", "rgba(255, 255, 255, 0.08)"),
+                ])
+            ]),
+            
+            # Today's Student Schedule Widget
+            html.Div(className="sga-card", style={"padding": "1.25rem"}, children=[
+                html.Div(style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "marginBottom": "1rem"}, children=[
+                    html.H3("Aujourd'hui", style={"margin": 0, "fontSize": "1rem", "fontWeight": "700"}),
+                    html.Span(datetime.now().strftime("%A %d %b"), style={"fontSize": ".7rem", "color": "#64748b", "fontWeight": "600"})
+                ]),
+                html.Div(style={"display": "flex", "flexDirection": "column", "gap": ".75rem"}, children=[
+                    _schedule_item(s["time"], s["title"], s["sub"], s["color"]) for s in s["today_sessions"]
+                ] if s["today_sessions"] else [html.P("Aucun cours aujourd'hui", className="text-muted", style={"fontSize": ".8rem", "textAlign": "center"})])
+            ])
         ]),
 
-        # MAIN CHARTS
-        html.Div(style={"display": "grid", "gridTemplateColumns": "1.2fr 1fr", "gap": "1.25rem", "marginBottom": "1.5rem"}, children=[
+        # Trend + Deadlines
+        html.Div(style={"display": "grid", "gridTemplateColumns": "1.5fr 1fr", "gap": "1.25rem", "marginBottom": "1.5rem"}, children=[
             # Attendance Trend
             html.Div(className="sga-card", style={"padding": "1.25rem"}, children=[
                 html.Div(style={"display": "flex", "justifyContent": "space-between", "marginBottom": "1rem"}, children=[
@@ -233,14 +264,15 @@ def refresh_dashboard(n):
                 ]),
                 dcc.Graph(figure=make_trend_chart(s["att_trend"]), config={"displayModeBar": False}),
             ]),
-            # Quick Actions / Info
-            html.Div(className="sga-card", style={"padding": "1.25rem", "background": "linear-gradient(135deg, #1e293b, #0f172a)", "color": "white"}, children=[
-                html.H3("Actions Rapides", style={"margin": "0 0 1.25rem 0", "fontSize": "1rem", "color": "white"}),
-                html.Div(style={"display": "flex", "flexDirection": "column", "gap": ".75rem"}, children=[
-                    _dash_action("add_circle", "Nouvelle Séance", "/sessions", "rgba(255, 255, 255, 0.08)"),
-                    _dash_action("upload", "Importer Notes", "/grades", "rgba(255, 255, 255, 0.08)"),
-                    _dash_action("person_add", "Inscrire Étudiant", "/students", "rgba(255, 255, 255, 0.08)"),
-                ])
+            # Project Deadlines Widget
+            html.Div(className="sga-card", style={"padding": "1.25rem"}, children=[
+                html.Div(style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "marginBottom": "1rem"}, children=[
+                    html.H4("Projets Prochains", style={"margin": 0, "fontSize": "1rem", "fontWeight": "700"}),
+                    html.A("Voir tout", href="/projects", style={"fontSize": ".75rem", "fontWeight": "600"})
+                ]),
+                html.Div(style={"display": "flex", "flexDirection": "column", "gap": "1.1rem"}, children=[
+                    _project_deadline(p["title"], p["deadline"], p["progress"], p["color"]) for p in s["deadlines"]
+                ] if s["deadlines"] else [html.P("Aucun projet en attente", className="text-muted", style={"fontSize": ".8rem", "textAlign": "center"})])
             ]),
         ]),
 
@@ -276,7 +308,7 @@ def refresh_dashboard(n):
 
 # ── Helper UI Components ─────────────────────────────────────────────────────
 
-def _kpi(icon, value, label, trend, color_key):
+def _kpi(icon, value, label, color_key):
     colors = {
         "blue": {"bg": "#eff6ff", "text": "#3b82f6"},
         "purple": {"bg": "#f5f3ff", "text": "#8b5cf6"},
@@ -284,15 +316,38 @@ def _kpi(icon, value, label, trend, color_key):
         "amber": {"bg": "#fffbeb", "text": "#f59e0b"},
     }
     c = colors[color_key]
-    return html.Div(className="sga-card", style={"padding": "1.25rem", "display": "flex", "alignItems": "center", "gap": "1rem"}, children=[
+    return html.Div(className="sga-card", style={"padding": "1rem", "display": "flex", "alignItems": "center", "gap": ".75rem", "flex": 1}, children=[
         html.Div(className="material-symbols-outlined", children=icon, style={
-            "fontSize": "1.5rem", "padding": ".75rem", "borderRadius": "12px",
+            "fontSize": "1.2rem", "padding": ".5rem", "borderRadius": "10px",
             "background": c["bg"], "color": c["text"]
         }),
         html.Div([
-            html.Div(label, style={"fontSize": ".75rem", "color": "#94a3b8", "fontWeight": "600", "textTransform": "uppercase"}),
-            html.Div(str(value), style={"fontSize": "1.5rem", "fontWeight": "800", "color": "#1e293b"}),
-            html.Div(trend, style={"fontSize": ".7rem", "color": "#10b981" if "+" in trend else "#ef4444", "fontWeight": "700"})
+            html.Div(label, style={"fontSize": ".65rem", "color": "#94a3b8", "fontWeight": "700", "textTransform": "uppercase"}),
+            html.Div(str(value), style={"fontSize": "1.2rem", "fontWeight": "800", "color": "#1e293b", "lineHeight": "1.1"}),
+        ])
+    ])
+
+def _schedule_item(time, title, sub, color_class):
+    return html.Div(style={"display": "flex", "gap": ".75rem", "alignItems": "center", "padding": ".5rem", "borderRadius": "8px", "background": "var(--bg-light)"}, children=[
+        html.Div(time, style={"fontSize": ".65rem", "fontWeight": "700", "color": "var(--text-secondary)", "width": "75px"}),
+        html.Div(style={"width": "3px", "height": "24px", "borderRadius": "2px"}, className=color_class),
+        html.Div([
+            html.Div(title, style={"fontSize": ".8rem", "fontWeight": "700", "lineHeight": "1.2"}),
+            html.Div(sub, style={"fontSize": ".65rem", "color": "#64748b"})
+        ])
+    ])
+
+def _project_deadline(title, time_left, progress, color):
+    return html.Div(children=[
+        html.Div(style={"display": "flex", "justifyContent": "space-between", "marginBottom": ".4rem"}, children=[
+            html.Div([
+                html.Div(title, style={"fontSize": ".85rem", "fontWeight": "700"}),
+                html.Div(time_left, style={"fontSize": ".7rem", "fontWeight": "600", "color": color})
+            ]),
+            html.Span(f"{progress}%", style={"fontSize": ".75rem", "fontWeight": "700", "color": "var(--text-secondary)"})
+        ]),
+        html.Div(className="progress-wrap", style={"height": "6px", "background": "#f1f5f9"}, children=[
+            html.Div(className="progress-fill", style={"width": f"{progress}%", "background": color})
         ])
     ])
 

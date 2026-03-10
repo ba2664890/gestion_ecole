@@ -3,7 +3,9 @@ SGA - Analytics Page
 Advanced charts: grade distribution, attendance trends, course comparisons
 """
 
-from dash import html, dcc, Input, Output, callback
+import dash
+from dash import html, dcc, Input, Output, callback, ALL
+import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
 import plotly.express as px
 from models import SessionLocal, Student, Course, Grade, Attendance, Session
@@ -75,6 +77,7 @@ def get_analytics_data():
             "n_students": len(students),
             "n_courses": len(courses),
             "n_grades": len(grades),
+            "courses_info": [{"id": c.id, "code": c.code, "avg_coef": 2.0} for c in courses] # Default coef 2.0
         }
     finally:
         db.close()
@@ -252,7 +255,134 @@ def layout():
                 dcc.Graph(figure=make_attendance_line(data["att_data"]), config={"displayModeBar": False}),
             ]),
         ]),
+
+        # Grade Simulator Section
+        html.Div(className="animate-fade-up-4", style={"marginTop": "1.5rem"}, children=[
+            html.Div(className="sga-card", style={"background": "linear-gradient(135deg, #fff 0%, #f8fafc 100%)", "border": "1px solid var(--primary-light)"}, children=[
+                html.Div(style={"display": "flex", "alignItems": "center", "gap": "1rem", "marginBottom": "1.5rem"}, children=[
+                    html.Div(className="kpi-icon badge-blue", children=[
+                        html.Span("calculate", className="material-symbols-outlined")
+                    ]),
+                    html.Div([
+                        html.H3("Simulateur de Moyenne (What-If)", style={"fontWeight": "800", "fontSize": "1.1rem", "margin": 0}),
+                        html.P("Simulez vos futures notes pour voir l'impact sur votre moyenne générale.", style={"fontSize": ".8rem", "color": "#64748b", "margin": 0}),
+                    ])
+                ]),
+                
+                dbc.Row([
+                    dbc.Col(width=5, children=[
+                        html.Div(className="sga-card", style={"background": "rgba(255,255,255,0.6)", "border": "1px solid #e2e8f0", "maxHeight": "500px", "overflowY": "auto"}, children=[
+                            html.H4("Notes Prédictives", style={"fontSize": ".9rem", "fontWeight": "700", "marginBottom": "1rem"}),
+                            
+                            html.Div([
+                                html.Div([
+                                    html.Div([
+                                        html.Label(f"{c['code']} (Coef {c['avg_coef']})", className="sga-label", style={"fontSize": "0.75rem"}),
+                                        dcc.Slider(0, 20, 0.5, value=12.0, id={"type": "sim-grade", "index": c['id']}, className="mb-2"),
+                                    ], style={"marginBottom": "10px"})
+                                    for c in data["courses_info"]
+                                ])
+                            ]),
+                            
+                            html.Div(id="sim-result-text", style={"marginTop": "1.5rem", "padding": "1rem", "borderRadius": "10px", "background": "var(--primary-light)", "border": "1px solid var(--primary)"})
+                        ])
+                    ]),
+                    dbc.Col(width=7, children=[
+                        html.Div([
+                            html.H4("Évolution de la Moyenne Générale", style={"fontSize": ".9rem", "fontWeight": "700", "textAlign": "center"}),
+                            dcc.Graph(id="sim-graph", config={"displayModeBar": False})
+                        ])
+                    ])
+                ])
+            ])
+        ])
     ])
+
+
+@callback(
+    Output("sim-graph", "figure"),
+    Output("sim-result-text", "children"),
+    Input({"type": "sim-grade", "index": ALL}, "value"),
+)
+def update_simulator(grade_values):
+    ctx = dash.callback_context
+    if not ctx.triggered: return dash.no_update, dash.no_update
+
+    db = SessionLocal()
+    try:
+        # Get all existing grades and their coefficients
+        all_grades = db.query(Grade).all()
+        existing_weighted_sum = sum(g.note * g.coefficient for g in all_grades)
+        existing_total_coef = sum(g.coefficient for g in all_grades)
+        
+        if existing_total_coef == 0:
+            current_avg = 10.0
+        else:
+            current_avg = existing_weighted_sum / existing_total_coef
+
+        # Collect simulated grades
+        # Assuming one new grade per course for simulation
+        courses = db.query(Course).all()
+        # Map simulated values to their respective course coefficients (default 2.0)
+        sim_weighted_sum = 0
+        sim_total_coef = 0
+        
+        # We need to match grade_values (from ALL) with the correct courses
+        # The order in ALL follows the order of components in the layout
+        for i, val in enumerate(grade_values):
+            coef = 2.0 # Default coef for simulation
+            sim_weighted_sum += (val if val is not None else 10.0) * coef
+            sim_total_coef += coef
+            
+        final_avg = (existing_weighted_sum + sim_weighted_sum) / (existing_total_coef + sim_total_coef)
+        
+        # Visualization data: Step by step impact?
+        # Let's show the impact of each added grade sequentially
+        x = ["Actuel"]
+        y = [current_avg]
+        
+        temp_sum = existing_weighted_sum
+        temp_coef = existing_total_coef
+        
+        for i, val in enumerate(grade_values):
+            course_code = courses[i].code if i < len(courses) else f"Cours {i}"
+            coef = 2.0
+            temp_sum += (val if val is not None else 10.0) * coef
+            temp_coef += coef
+            x.append(course_code)
+            y.append(round(temp_sum / temp_coef, 2))
+            
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=x, y=y, mode="lines+markers",
+            line={"color": PRIMARY, "width": 3, "shape": "linear"},
+            marker={"size": 10, "color": "#fff", "line": {"color": PRIMARY, "width": 2}},
+            fill="tozeroy", fillcolor="rgba(99,102,241,.05)"
+        ))
+        
+        fig.update_layout(
+            **{
+                **CHART_LAYOUT, 
+                "height": 350,
+                "xaxis": {"title": "Progression de la simulation", "gridcolor": "#f1f5f9"},
+                "yaxis": {"title": "Moyenne Prédite", "range": [min(y)-1, max(y)+1], "gridcolor": "#f1f5f9"},
+                "margin": {"t": 10, "b": 40, "l": 40, "r": 20}
+            }
+        )
+        
+        diff = final_avg - current_avg
+        color = "var(--success)" if diff >= 0 else "var(--danger)"
+        
+        return fig, html.Div([
+            html.Div("Moyenne Finale Prévue", style={"fontSize": ".7rem", "fontWeight": "700", "textTransform": "uppercase", "color": "var(--text-secondary)"}),
+            html.Div(f"{final_avg:.2f}/20", style={"fontSize": "1.8rem", "fontWeight": "800", "color": PRIMARY, "lineHeight": "1.2"}),
+            html.Div([
+                html.Span("▲" if diff >= 0 else "▼", style={"fontSize": ".8rem"}),
+                f" {abs(diff):.2f} pts d'évolution"
+            ], style={"fontSize": ".75rem", "fontWeight": "700", "color": color})
+        ])
+    finally:
+        db.close()
 
 
 def _stat_card(label, value, icon, color):

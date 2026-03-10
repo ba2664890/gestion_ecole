@@ -71,7 +71,11 @@ def layout():
         ]),
 
         # Courses grid
-        html.Div(id="courses-grid", children=[_render_courses_grid(courses)], className="animate-fade-up-2"),
+        dcc.Loading(
+            id="loading-courses",
+            type="circle",
+            children=html.Div(id="courses-grid", children=[_render_courses_grid(courses)], className="animate-fade-up-2")
+        ),
 
         # Add/Edit Modal
         html.Div(id="course-modal-overlay", style={"display": "none"}, children=[
@@ -315,10 +319,19 @@ def save_course(n, code, libelle, vh, enseignant, description, edit_id):
         db.commit()
     except Exception as e:
         db.rollback()
-        return html.Div(f"Erreur: {e}", style={"color": "#ef4444", "fontSize": ".85rem"}), no_update
+        return html.Div([
+            html.Span("error", className="material-symbols-outlined", style={"fontSize": "1rem"}),
+            f" Erreur: {e}"
+        ], className="badge badge-red", style={"marginTop": ".5rem"}), no_update
     finally:
         db.close()
-    return html.Div("✓ Cours enregistré.", style={"color": "#10b981", "fontSize": ".85rem"}), _render_courses_grid(get_courses())
+    
+    success_msg = html.Div([
+        html.Span("check_circle", className="material-symbols-outlined", style={"fontSize": "1rem"}),
+        " Cours enregistré avec succès."
+    ], className="badge badge-green", style={"marginTop": ".5rem"})
+    
+    return success_msg, _render_courses_grid(get_courses())
 
 
 @callback(

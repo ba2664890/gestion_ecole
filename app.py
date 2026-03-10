@@ -14,7 +14,8 @@ import os
 from models import init_db, SessionLocal, User
 from pages import (
     login, dashboard, students, courses, sessions, 
-    analytics, reports, settings_page, grades
+    analytics, reports, settings_page, grades,
+    schedule, projects
 )
 
 # Init DB on startup
@@ -49,6 +50,10 @@ def serve_layout():
         # Client-side store for auth state
         dcc.Store(id="auth-store", storage_type="session"),
         dcc.Store(id="current-page-store", data="/"),
+        
+        # UI State stores
+        dcc.Store(id="notification-store", data=None),
+        dcc.Store(id="global-trigger-store", data=None),
 
         # URL
         dcc.Location(id="url", refresh=False),
@@ -104,6 +109,8 @@ def shell_layout(pathname):
         {"icon": "grade", "label": "Notes & Évaluations", "href": "/grades"},
         {"icon": "analytics", "label": "Analytique", "href": "/analytics"},
         {"icon": "summarize", "label": "Rapports & Exports", "href": "/reports"},
+        {"icon": "calendar_month", "label": "Emploi du Temps", "href": "/schedule"},
+        {"icon": "assignment", "label": "Projets & Groupes", "href": "/projects"},
         {"icon": "settings", "label": "Paramètres", "href": "/settings"},
     ]
 
@@ -142,6 +149,18 @@ def shell_layout(pathname):
                 )
                 for item in nav_items[4:6]
             ],
+            html.Div("VIE ÉTUDIANTE", className="nav-section-label"),
+            *[
+                html.A(
+                    [
+                        html.Span(item["icon"], className="material-symbols-outlined mat-icon"),
+                        item["label"]
+                    ],
+                    href=item["href"],
+                    className=f"nav-item {'active' if pathname == item['href'] else ''}",
+                )
+                for item in nav_items[7:9]
+            ],
             html.Div("ADMINISTRATION", className="nav-section-label"),
             *[
                 html.A(
@@ -152,12 +171,24 @@ def shell_layout(pathname):
                     href=item["href"],
                     className=f"nav-item {'active' if pathname == item['href'] else ''}",
                 )
-                for item in nav_items[6:]
+                for item in [nav_items[6], nav_items[9]]
             ],
         ]),
+        # Pomodoro Timer Widget
+        html.Div(className="pomodoro-container", children=[
+            html.Div("FOCUS MODE", className="pomo-label"),
+            html.Div("25:00", id="pomo-display", className="pomo-timer"),
+            html.Div(className="pomo-controls", children=[
+                html.Button(html.Span("play_arrow", className="material-symbols-outlined"), id="pomo-start-btn", className="pomo-btn", n_clicks=0),
+                html.Button(html.Span("refresh", className="material-symbols-outlined"), id="pomo-reset-btn", className="pomo-btn", n_clicks=0),
+            ]),
+            dcc.Interval(id="pomo-interval", interval=1000, disabled=True),
+            dcc.Store(id="pomo-store", data={"seconds": 1500, "active": False})
+        ]),
+
         # Footer
         html.Div(id="sidebar-footer", children=[
-            html.Div(id="logout-btn", n_clicks=0, className="nav-item", style={"color": "#ef4444"}, children=[
+            html.Div(id="logout-btn", n_clicks=0, className="nav-item", style={"color": "#ef4444", "cursor": "pointer"}, children=[
                 html.Span("logout", className="material-symbols-outlined mat-icon"),
                 "Déconnexion"
             ]),
@@ -174,6 +205,8 @@ def shell_layout(pathname):
             "/grades": grades.layout,
             "/analytics": analytics.layout,
             "/reports": reports.layout,
+            "/schedule": schedule.layout,
+            "/projects": projects.layout,
             "/settings": settings_page.layout,
         }
 
@@ -262,6 +295,21 @@ def shell_layout(pathname):
             ]),
             # Page content
             html.Div(id="page-content", children=[page_content], className="animate-fade-in"),
+            
+            # Global Floating Action Button (FAB)
+            html.Div(className="fab-container", children=[
+                html.Div(className="fab-menu", children=[
+                    html.Div([
+                        html.Span("casino", className="material-symbols-outlined"),
+                    ], className="fab-item", id="fab-random-gen", title="Générer Données Aléatoires"),
+                    html.Div([
+                        html.Span("add_task", className="material-symbols-outlined"),
+                    ], className="fab-item", id="fab-new-project", title="Nouveau Projet"),
+                ]),
+                html.Button([
+                    html.Span("add", className="material-symbols-outlined"),
+                ], className="fab-main", id="fab-main-btn"),
+            ]),
         ])
     ])
 
@@ -275,6 +323,8 @@ def get_page_title(path):
         "/grades": "Notes & Évaluations",
         "/analytics": "Analytique Académique",
         "/reports": "Rapports & Exports",
+        "/schedule": "Emploi du Temps",
+        "/projects": "Projets & Groupes",
         "/settings": "Paramètres",
     }
     return titles.get(path, "SGA")
@@ -289,6 +339,8 @@ def get_page_subtitle(path):
         "/grades": "Saisie et suivi des évaluations",
         "/analytics": "Graphiques et statistiques",
         "/reports": "Génération et export de documents",
+        "/schedule": "Organisation hebdomadaire des cours",
+        "/projects": "Suivi des travaux de groupe ENSAE",
         "/settings": "Configuration du système",
     }
     return subtitles.get(path, "")
@@ -356,6 +408,83 @@ def _dropdown_item(title, subtitle, icon, color):
         ])
     ])
 
+
+@callback(
+    Output("pomo-store", "data"),
+    Output("pomo-interval", "disabled"),
+    Output("pomo-start-btn", "children"),
+    Output("pomo-start-btn", "className"),
+    Input("pomo-start-btn", "n_clicks"),
+    Input("pomo-reset-btn", "n_clicks"),
+    Input("pomo-interval", "n_intervals"),
+    State("pomo-store", "data"),
+    prevent_initial_call=True
+)
+def update_pomo(start_n, reset_n, n_int, data):
+    from dash import callback_context
+    ctx = callback_context
+    if not ctx.triggered: return no_update
+    
+    trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+    
+    if trigger_id == "pomo-reset-btn":
+        return {"seconds": 1500, "active": False}, True, html.Span("play_arrow", className="material-symbols-outlined"), "pomo-btn"
+    
+    if trigger_id == "pomo-start-btn":
+        new_active = not data["active"]
+        icon = "pause" if new_active else "play_arrow"
+        btn_class = "pomo-btn active" if new_active else "pomo-btn"
+        return {"seconds": data["seconds"], "active": new_active}, not new_active, html.Span(icon, className="material-symbols-outlined"), btn_class
+        
+    if trigger_id == "pomo-interval":
+        if data["active"] and data["seconds"] > 0:
+            new_secs = data["seconds"] - 1
+            return {"seconds": new_secs, "active": True}, False, no_update, no_update
+        elif data["seconds"] <= 0:
+            return {"seconds": 0, "active": False}, True, html.Span("notifications_active", className="material-symbols-outlined"), "pomo-btn"
+            
+    return no_update
+
+@callback(
+    Output("pomo-display", "children"),
+    Output("pomo-display", "className"),
+    Input("pomo-store", "data")
+)
+def display_pomo(data):
+    s = data["seconds"]
+    mins = s // 60
+    secs = s % 60
+    display = f"{mins:02d}:{secs:02d}"
+    class_name = "pomo-timer pomo-urgent" if s < 60 and s > 0 else "pomo-timer"
+    return display, class_name
+
+@callback(
+    Output("notification-store", "data"),
+    Input("fab-random-gen", "n_clicks"),
+    prevent_initial_call=True
+)
+def trigger_random_gen(n):
+    if not n: return no_update
+    try:
+        from utils.seeding import generate_random_projects, generate_random_schedule
+        generate_random_projects(3)
+        generate_random_schedule()
+        return {"message": "Données aléatoires générées avec succès !", "type": "success"}
+    except Exception as e:
+        return {"message": f"Erreur lors de la génération : {e}", "type": "error"}
+
+@callback(
+    Output("toast-container", "children"),
+    Input("notification-store", "data"),
+    prevent_initial_call=True
+)
+def show_toast(data):
+    if not data: return no_update
+    icon = "check_circle" if data["type"] == "success" else "error"
+    return html.Div(className=f"toast {data['type']}", children=[
+        html.Span(icon, className="material-symbols-outlined"),
+        html.Div(data["message"])
+    ])
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=8050)
