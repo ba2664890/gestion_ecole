@@ -259,8 +259,9 @@ def do_login(n_clicks, n_submit, username, password):
     db = SessionLocal()
     try:
         pw_hash = hashlib.sha256(password.encode()).hexdigest()
-        user = db.query(User).filter_by(username=username, password_hash=pw_hash).first()
-        if user:
+        user = db.query(User).filter_by(username=username).first()
+        
+        if user and user.password_hash == pw_hash:
             return (
                 {"authenticated": True, "username": user.username, "role": user.role, "nom": user.nom_complet},
                 {"display": "none"},

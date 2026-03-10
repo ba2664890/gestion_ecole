@@ -13,7 +13,7 @@ Base = declarative_base()
 
 DB_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql://neondb_owner:npg_IOEvtGp5oF2B@ep-orange-king-aiiqaabt-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+    "sqlite:///sga.db"
 )
 
 engine = create_engine(DB_URL, pool_pre_ping=True, pool_recycle=300)

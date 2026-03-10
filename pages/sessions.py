@@ -18,10 +18,16 @@ def get_courses_options():
         db.close()
 
 
+from sqlalchemy.orm import joinedload
+
 def get_sessions_history():
     db = SessionLocal()
     try:
-        sessions = db.query(DBSession).order_by(DBSession.date.desc()).limit(30).all()
+        sessions = db.query(DBSession).options(
+            joinedload(DBSession.course),
+            joinedload(DBSession.attendances)
+        ).order_by(DBSession.date.desc()).limit(30).all()
+        
         result = []
         for s in sessions:
             absent_count = sum(1 for a in s.attendances if a.absent)
@@ -96,7 +102,7 @@ def layout():
                     html.Div(style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "1rem", "marginBottom": "1rem"}, children=[
                         html.Div([
                             html.Label("Date de séance *", className="sga-label"),
-                            dcc.Input(id="session-date", type="date", value=str(date.today()),
+                            dcc.DatePickerSingle(id="session-date", date=date.today(),
                                       className="sga-input", style={"width": "100%"}),
                         ]),
                         html.Div([
@@ -331,7 +337,7 @@ def toggle_absent(n_clicks_list, ids, absent_ids):
     Output("sessions-history-table", "children", allow_duplicate=True),
     Input("save-session-btn", "n_clicks"),
     State("session-course-select", "value"),
-    State("session-date", "value"),
+    State("session-date", "date"),
     State("session-duree", "value"),
     State("session-theme", "value"),
     State("absent-students-store", "data"),

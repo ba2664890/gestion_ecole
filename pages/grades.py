@@ -3,7 +3,7 @@ SGA - Grades & Evaluations Page
 Excel template download, grade upload, manual entry
 """
 
-from dash import html, dcc, Input, Output, State, callback, no_update
+from dash import html, dcc, Input, Output, State, callback, no_update, ALL
 import base64, io
 from models import SessionLocal, Student, Course, Grade
 from sqlalchemy import func
@@ -25,12 +25,21 @@ def get_grades_summary(course_id=None):
         courses = db.query(Course).all()
         course_map = {c.id: c for c in courses}
 
+        # Récupération globale des notes
+        if course_id:
+            all_grades = db.query(Grade).filter_by(course_id=course_id).all()
+        else:
+            all_grades = db.query(Grade).all()
+
+        # Groupement des notes par étudiant en mémoire
+        from collections import defaultdict
+        grades_by_student = defaultdict(list)
+        for g in all_grades:
+            grades_by_student[g.student_id].append(g)
+
         result = []
         for s in students:
-            q = db.query(Grade).filter_by(student_id=s.id)
-            if course_id:
-                q = q.filter_by(course_id=course_id)
-            grades = q.all()
+            grades = grades_by_student.get(s.id, [])
 
             if course_id:
                 note = grades[0].note if grades else None
@@ -171,13 +180,13 @@ def _tab_import(course_opts):
             html.Label("Sélectionner un cours", className="sga-label"),
             dcc.Dropdown(id="template-course-select", options=course_opts,
                          placeholder="Cours...", style={"fontSize": ".875rem", "marginBottom": "1rem"}),
-            html.A(
+            html.Button(
                 [html.Span("download", className="material-symbols-outlined", style={"fontSize": "1rem"}),
                  "Télécharger le Template Excel"],
                 id="download-template-link",
-                href="#",
+                n_clicks=0,
                 className="btn-primary",
-                style={"textDecoration": "none", "display": "inline-flex", "alignItems": "center", "gap": ".5rem"},
+                style={"display": "inline-flex", "alignItems": "center", "gap": ".5rem"},
             ),
             dcc.Download(id="download-template"),
         ]),
@@ -383,3 +392,50 @@ def process_upload(contents, filename):
     except Exception as e:
         return html.Div(f"Erreur lors du traitement: {e}",
                         style={"color": "#ef4444", "fontSize": ".875rem", "marginTop": "1rem"})
+
+
+@callback(
+    Output("course-grade-save-feedback", "children"),
+    Input("save-course-grades-btn", "n_clicks"),
+    State({"type": "grade-input", "index": ALL}, "value"),
+    State({"type": "grade-input", "index": ALL}, "id"),
+    State({"type": "coef-input", "index": ALL}, "value"),
+    State("selected-course-id-store", "data"),
+    prevent_initial_call=True,
+)
+def save_course_grades(n, notes, note_ids, coefs, course_id):
+    if not n or not course_id:
+        return no_update
+    db = SessionLocal()
+    saved, errors = 0, []
+    try:
+        for id_obj, note, coef in zip(note_ids, notes, coefs):
+            if note is None:
+                continue
+            student_id = id_obj["index"]
+            try:
+                note_val = float(note)
+                coef_val = float(coef) if coef else 1.0
+                if note_val < 0 or note_val > 20:
+                    errors.append(f"Note hors intervalle pour ID {student_id}")
+                    continue
+                existing = db.query(Grade).filter_by(student_id=student_id, course_id=course_id, type_evaluation="Examen").first()
+                if existing:
+                    existing.note = note_val
+                    existing.coefficient = coef_val
+                else:
+                    db.add(Grade(student_id=student_id, course_id=course_id,
+                                 note=note_val, coefficient=coef_val, type_evaluation="Examen"))
+                saved += 1
+            except Exception as e:
+                errors.append(str(e))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        return html.Div(f"Erreur: {e}", style={"color": "#ef4444", "fontSize": ".85rem"})
+    finally:
+        db.close()
+    msg = [html.Div(f"✓ {saved} note(s) enregistrée(s).", style={"color": "#10b981", "fontWeight": "600", "fontSize": ".875rem"})]
+    if errors:
+        msg.append(html.Div(f"⚠ {len(errors)} erreur(s): {', '.join(errors[:3])}", style={"color": "#f59e0b", "fontSize": ".8rem"}))
+    return html.Div(msg)

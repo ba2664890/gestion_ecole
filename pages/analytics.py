@@ -140,7 +140,7 @@ def make_course_comparison(course_avgs):
     fig.add_hline(y=10, line_dash="dot", line_color="#f59e0b",
                   annotation_text="Seuil 10/20", annotation_position="right")
     layout = {**CHART_LAYOUT}
-    layout["xaxis"] = {**layout.get("xaxis", {}), "title": "Cours", "gridcolor": "transparent"}
+    layout["xaxis"] = {**layout.get("xaxis", {}), "title": "Cours", "gridcolor": "rgba(0,0,0,0)"}
     layout["yaxis"] = {**layout.get("yaxis", {}), "title": "Moyenne /20", "range": [0, 21]}
     
     fig.update_layout(
@@ -191,11 +191,14 @@ def make_bracket_pie(brackets):
         textinfo="label+percent",
         hovertemplate="%{label}: %{value} étudiant(s)<extra></extra>",
     ))
+    # On copie CHART_LAYOUT pour pouvoir modifier la légende et les marges sans conflit
+    layout = {**CHART_LAYOUT, "height": 300}
+    layout["legend"] = {"orientation": "v", "x": 1.05, "bgcolor": "rgba(0,0,0,0)"}
+    layout["margin"] = {"t": 20, "b": 20, "l": 20, "r": 100}
+    
     fig.update_layout(
-        **{**CHART_LAYOUT, "height": 300},
+        **layout,
         showlegend=True,
-        legend={"orientation": "v", "x": 1.05},
-        margin={"t": 20, "b": 20, "l": 20, "r": 100},
     )
     return fig
 

@@ -3,7 +3,7 @@ SGA - Students Page
 CRUD for students + individual dashboard + grade/attendance overview
 """
 
-from dash import html, dcc, Input, Output, State, callback, no_update, ctx
+from dash import html, dcc, Input, Output, State, callback, no_update, ctx, ALL
 import pandas as pd
 from datetime import date
 from models import SessionLocal, Student, Attendance, Grade, Session, Course
@@ -15,15 +15,28 @@ def get_students():
     db = SessionLocal()
     try:
         students = db.query(Student).order_by(Student.nom).all()
+        
+        # Récupération globale du nombre d'absences par étudiant
+        absences = db.query(Attendance.student_id, func.count(Attendance.id)).filter_by(absent=True).group_by(Attendance.student_id).all()
+        absences_map = {row[0]: row[1] for row in absences}
+        
+        # Récupération globale du nombre total de présences (sessions) par étudiant
+        total_att = db.query(Attendance.student_id, func.count(Attendance.id)).group_by(Attendance.student_id).all()
+        total_att_map = {row[0]: row[1] for row in total_att}
+        
+        # Récupération globale des moyennes par étudiant
+        avgs = db.query(Grade.student_id, func.avg(Grade.note)).group_by(Grade.student_id).all()
+        avgs_map = {row[0]: row[1] for row in avgs}
+
         result = []
         for s in students:
-            # Absence rate
-            total_att = db.query(Attendance).join(Attendance.session).filter(Attendance.student_id == s.id).count()
-            absences = db.query(Attendance).filter_by(student_id=s.id, absent=True).count()
-            abs_rate = (absences / total_att * 100) if total_att > 0 else 0
+            # Calcul du taux d'absence en mémoire
+            t_att = total_att_map.get(s.id, 0)
+            abs_count = absences_map.get(s.id, 0)
+            abs_rate = (abs_count / t_att * 100) if t_att > 0 else 0
 
-            # Average grade
-            avg = db.query(func.avg(Grade.note)).filter_by(student_id=s.id).scalar() or 0
+            # Moyenne en mémoire
+            avg = avgs_map.get(s.id) or 0
 
             result.append({
                 "id": s.id, "nom": s.nom, "prenom": s.prenom,
@@ -58,6 +71,37 @@ def layout():
                     html.Span("person_add", className="material-symbols-outlined", style={"fontSize": "1rem"}),
                     "Nouvel Étudiant",
                 ], id="open-add-student-modal", className="btn-primary", n_clicks=0),
+            ]),
+        ]),
+
+        # Import Excel Modal
+        html.Div(id="import-modal-overlay", style={"display": "none"}, children=[
+            html.Div(style={
+                "position": "fixed", "inset": 0, "background": "rgba(0,0,0,.4)",
+                "zIndex": 1002, "display": "flex", "alignItems": "center", "justifyContent": "center",
+            }, children=[
+                html.Div(className="sga-card animate-fade-up", style={"width": "100%", "maxWidth": "480px"}, children=[
+                    html.Div(style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "marginBottom": "1.25rem"}, children=[
+                        html.H3("Importer des Étudiants (Excel)", style={"fontWeight": "700", "fontSize": "1.1rem", "margin": 0}),
+                        html.Button("✕", id="close-import-modal", n_clicks=0, style={
+                            "background": "none", "border": "none", "fontSize": "1.2rem", "cursor": "pointer", "color": "#64748b",
+                        }),
+                    ]),
+                    html.P("Votre fichier Excel doit contenir les colonnes : Nom, Prenom, Email, Date_Naissance (YYYY-MM-DD).",
+                           style={"fontSize": ".85rem", "color": "#64748b", "marginBottom": "1rem"}),
+                    dcc.Upload(
+                        id="upload-students-excel",
+                        children=html.Div(className="upload-zone", children=[
+                            html.Span("cloud_upload", className="material-symbols-outlined",
+                                      style={"fontSize": "2.5rem", "color": "#94a3b8", "display": "block", "marginBottom": ".75rem"}),
+                            html.P("Glissez votre fichier ici", style={"fontWeight": "600", "marginBottom": ".25rem"}),
+                            html.P("ou cliquez pour parcourir (.xlsx)", style={"color": "#94a3b8", "fontSize": ".8rem"}),
+                        ]),
+                        accept=".xlsx,.xls",
+                        multiple=False,
+                    ),
+                    html.Div(id="import-students-feedback", style={"marginTop": "1rem"}),
+                ]),
             ]),
         ]),
 
@@ -114,7 +158,7 @@ def layout():
                     ]),
                     html.Div(style={"marginTop": "1rem"}, children=[
                         html.Label("Date de naissance", className="sga-label"),
-                        dcc.Input(id="s-dob", type="date", className="sga-input", style={"width": "100%"}),
+                        dcc.Input(id="s-dob", type="text", placeholder="YYYY-MM-DD", className="sga-input", style={"width": "100%"}),
                     ]),
                     html.Div(id="student-form-feedback", style={"marginTop": "1rem"}),
                     html.Div(style={"display": "flex", "gap": ".75rem", "marginTop": "1.5rem", "justifyContent": "flex-end"}, children=[
@@ -264,13 +308,140 @@ def filter_students(search):
     Input("close-student-modal", "n_clicks"),
     Input("cancel-student-btn", "n_clicks"),
     Input("save-student-btn", "n_clicks"),
+    Input({"type": "edit-student-btn", "index": ALL}, "n_clicks"),
     prevent_initial_call=True,
 )
-def toggle_modal(open_n, close_n, cancel_n, save_n):
+def toggle_modal(open_n, close_n, cancel_n, save_n, edit_clicks):
     tid = ctx.triggered_id
     if tid == "open-add-student-modal":
         return {"display": "block"}, None, "", "", "", "", "Nouvel Étudiant"
+    if isinstance(tid, dict) and tid.get("type") == "edit-student-btn":
+        # Guard: only open if an actual click happened (n_clicks > 0)
+        triggered_clicks = ctx.triggered[0]["value"] if ctx.triggered else 0
+        if not triggered_clicks:
+            return no_update, no_update, no_update, no_update, no_update, no_update, no_update
+        student_id = tid["index"]
+        db = SessionLocal()
+        try:
+            s = db.query(Student).filter_by(id=student_id).first()
+            if s:
+                dob_str = str(s.date_naissance) if s.date_naissance else ""
+                return {"display": "block"}, student_id, s.nom, s.prenom, s.email, dob_str, "Modifier l'Étudiant"
+        finally:
+            db.close()
     return {"display": "none"}, no_update, no_update, no_update, no_update, no_update, no_update
+
+
+@callback(
+    Output("delete-confirm-overlay", "style"),
+    Output("delete-student-id", "data"),
+    Input({"type": "delete-student-btn", "index": ALL}, "n_clicks"),
+    Input("cancel-delete-btn", "n_clicks"),
+    prevent_initial_call=True,
+)
+def toggle_delete_modal(delete_clicks, cancel_n):
+    tid = ctx.triggered_id
+    if isinstance(tid, dict) and tid.get("type") == "delete-student-btn":
+        # Guard: only open if an actual click happened (n_clicks > 0)
+        triggered_clicks = ctx.triggered[0]["value"] if ctx.triggered else 0
+        if not triggered_clicks:
+            return no_update, no_update
+        student_id = tid["index"]
+        return {"display": "block"}, student_id
+    # cancel button or any other trigger → close
+    return {"display": "none"}, no_update
+
+
+@callback(
+    Output("students-table-container", "children", allow_duplicate=True),
+    Output("student-notification", "children"),
+    Output("delete-confirm-overlay", "style", allow_duplicate=True),
+    Input("confirm-delete-btn", "n_clicks"),
+    State("delete-student-id", "data"),
+    prevent_initial_call=True,
+)
+def confirm_delete_student(n, student_id):
+    if not n or not student_id:
+        return no_update, no_update, no_update
+    db = SessionLocal()
+    try:
+        s = db.query(Student).filter_by(id=student_id).first()
+        if s:
+            db.delete(s)
+            db.commit()
+            return (
+                _render_table(get_students()),
+                html.Div("✓ Étudiant supprimé.", style={"color": "#10b981", "fontSize": ".85rem", "marginTop": ".5rem"}),
+                {"display": "none"},
+            )
+    except Exception as e:
+        db.rollback()
+        return no_update, html.Div(f"Erreur: {e}", style={"color": "#ef4444", "fontSize": ".85rem"}), no_update
+    finally:
+        db.close()
+    return no_update, no_update, no_update
+
+
+@callback(
+    Output("import-modal-overlay", "style"),
+    Input("open-import-modal", "n_clicks"),
+    Input("close-import-modal", "n_clicks"),
+    prevent_initial_call=True,
+)
+def toggle_import_modal(open_n, close_n):
+    tid = ctx.triggered_id
+    if tid == "open-import-modal":
+        return {"display": "block"}
+    return {"display": "none"}
+
+
+@callback(
+    Output("import-students-feedback", "children"),
+    Output("students-table-container", "children", allow_duplicate=True),
+    Input("upload-students-excel", "contents"),
+    State("upload-students-excel", "filename"),
+    prevent_initial_call=True,
+)
+def import_students_excel(contents, filename):
+    if not contents:
+        return no_update, no_update
+    import base64, io
+    try:
+        import pandas as pd
+        content_type, content_string = contents.split(",")
+        decoded = base64.b64decode(content_string)
+        df = pd.read_excel(io.BytesIO(decoded))
+        required = ["Nom", "Prenom", "Email"]
+        for col in required:
+            if col not in df.columns:
+                return html.Div(f"Colonne manquante: {col}", style={"color": "#ef4444", "fontSize": ".85rem"}), no_update
+        db = SessionLocal()
+        added, errors = 0, []
+        try:
+            for _, row in df.iterrows():
+                email = str(row["Email"]).strip()
+                if db.query(Student).filter_by(email=email).first():
+                    errors.append(f"{email} existe déjà")
+                    continue
+                dob = None
+                if "Date_Naissance" in df.columns and pd.notna(row["Date_Naissance"]):
+                    try:
+                        dob = date.fromisoformat(str(row["Date_Naissance"])[:10])
+                    except Exception:
+                        pass
+                s = Student(nom=str(row["Nom"]).strip(), prenom=str(row["Prenom"]).strip(),
+                            email=email, date_naissance=dob)
+                db.add(s)
+                added += 1
+            db.commit()
+        finally:
+            db.close()
+        msg = [html.Div(f"✓ {added} étudiant(s) importé(s).", style={"color": "#10b981", "fontWeight": "600", "fontSize": ".85rem"})]
+        if errors:
+            msg.append(html.Div(f"⚠ {len(errors)} ignoré(s): {', '.join(errors[:3])}", style={"color": "#f59e0b", "fontSize": ".8rem"}))
+        return html.Div(msg), _render_table(get_students())
+    except Exception as e:
+        return html.Div(f"Erreur: {e}", style={"color": "#ef4444", "fontSize": ".85rem"}), no_update
 
 
 @callback(

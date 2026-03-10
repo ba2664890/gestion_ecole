@@ -3,15 +3,18 @@ SGA - Courses / Curriculum Page
 CRUD + progress tracking per course
 """
 
-from dash import html, dcc, Input, Output, State, callback, no_update, ctx
+from dash import html, dcc, Input, Output, State, callback, no_update, ctx, ALL
 from models import SessionLocal, Course, Session as DBSession
 from sqlalchemy import func
 
 
+from sqlalchemy.orm import joinedload
+
 def get_courses():
     db = SessionLocal()
     try:
-        courses = db.query(Course).order_by(Course.libelle).all()
+        # Load courses and eagerly load sessions to avoid N+1 queries
+        courses = db.query(Course).options(joinedload(Course.sessions)).order_by(Course.libelle).all()
         result = []
         for c in courses:
             h_done = sum(s.duree for s in c.sessions)
@@ -118,6 +121,30 @@ def layout():
         ]),
 
         html.Div(id="course-notification"),
+        dcc.Download(id="download-courses-csv"),
+
+        # Delete Confirmation Modal
+        html.Div(id="course-delete-overlay", style={"display": "none"}, children=[
+            html.Div(style={
+                "position": "fixed", "inset": 0, "background": "rgba(0,0,0,.5)",
+                "zIndex": 1100, "display": "flex", "alignItems": "center", "justifyContent": "center",
+            }, children=[
+                html.Div(className="sga-card", style={"width": "100%", "maxWidth": "400px", "textAlign": "center", "padding": "2rem"}, children=[
+                    html.Div(
+                        html.Span("warning", className="material-symbols-outlined", style={"fontSize": "3rem", "color": "#ef4444"}),
+                        style={"background": "#fee2e2", "width": "80px", "height": "80px", "borderRadius": "50%", "display": "flex", "alignItems": "center", "justifyContent": "center", "margin": "0 auto 1.5rem"}
+                    ),
+                    html.H3("Supprimer ce cours ?", style={"fontWeight": "700", "marginBottom": ".5rem"}),
+                    html.P("Cette action est irréversible. Toutes les séances et notes associées seront supprimées.", 
+                           style={"color": "#64748b", "fontSize": ".875rem", "marginBottom": "2rem"}),
+                    dcc.Store(id="delete-course-id-store"),
+                    html.Div(style={"display": "flex", "gap": ".75rem", "justifyContent": "center"}, children=[
+                        html.Button("Annuler", id="cancel-course-delete", n_clicks=0, className="btn-secondary", style={"flex": 1}),
+                        html.Button("Supprimer", id="confirm-course-delete", n_clicks=0, className="btn-danger", style={"flex": 1}),
+                    ]),
+                ]),
+            ]),
+        ]),
     ])
 
 
@@ -227,12 +254,30 @@ def _course_card(c):
     Input("close-course-modal", "n_clicks"),
     Input("cancel-course-btn", "n_clicks"),
     Input("save-course-btn", "n_clicks"),
+    Input({"type": "edit-course-btn", "index": ALL}, "n_clicks"),
     prevent_initial_call=True,
 )
-def toggle_course_modal(open_n, close_n, cancel_n, save_n):
+def handle_course_modal(open_n, close_n, cancel_n, save_n, edit_clicks):
     tid = ctx.triggered_id
+    
     if tid == "open-add-course-modal":
         return {"display": "block"}, "", "", None, "", "", None, "Nouveau Cours"
+        
+    if isinstance(tid, dict) and tid.get("type") == "edit-course-btn":
+        triggered_clicks = ctx.triggered[0]["value"] if ctx.triggered else 0
+        if not triggered_clicks:
+            return no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update
+            
+        course_id = tid["index"]
+        db = SessionLocal()
+        try:
+            c = db.query(Course).filter_by(id=course_id).first()
+            if c:
+                return {"display": "block"}, c.code, c.libelle, c.volume_horaire, c.enseignant, c.description or "", c.id, "Modifier le Cours"
+        finally:
+            db.close()
+            
+    # Close for any other trigger (close, cancel, save)
     return {"display": "none"}, no_update, no_update, no_update, no_update, no_update, no_update, no_update
 
 
@@ -274,3 +319,73 @@ def save_course(n, code, libelle, vh, enseignant, description, edit_id):
     finally:
         db.close()
     return html.Div("✓ Cours enregistré.", style={"color": "#10b981", "fontSize": ".85rem"}), _render_courses_grid(get_courses())
+
+
+@callback(
+    Output("course-delete-overlay", "style"),
+    Output("delete-course-id-store", "data"),
+    Input({"type": "delete-course-btn", "index": ALL}, "n_clicks"),
+    Input("cancel-course-delete", "n_clicks"),
+    prevent_initial_call=True,
+)
+def toggle_delete_modal(delete_clicks, cancel_n):
+    tid = ctx.triggered_id
+    if isinstance(tid, dict) and tid.get("type") == "delete-course-btn":
+        triggered_clicks = ctx.triggered[0]["value"] if ctx.triggered else 0
+        if not triggered_clicks:
+            return no_update, no_update
+        return {"display": "block"}, tid["index"]
+    return {"display": "none"}, no_update
+
+
+@callback(
+    Output("courses-grid", "children", allow_duplicate=True),
+    Output("course-notification", "children"),
+    Output("course-delete-overlay", "style", allow_duplicate=True),
+    Input("confirm-course-delete", "n_clicks"),
+    State("delete-course-id-store", "data"),
+    prevent_initial_call=True,
+)
+def confirm_delete_course(n, course_id):
+    if not n or not course_id:
+        return no_update, no_update, no_update
+        
+    db = SessionLocal()
+    try:
+        c = db.query(Course).filter_by(id=course_id).first()
+        if c:
+            db.delete(c)
+            db.commit()
+            return _render_courses_grid(get_courses()), html.Div(
+                "✓ Cours supprimé avec succès.",
+                style={"color": "#10b981", "fontSize": ".85rem", "marginTop": ".5rem"}
+            ), {"display": "none"}
+    except Exception as e:
+        db.rollback()
+        return no_update, html.Div(f"Erreur: {e}", style={"color": "#ef4444", "fontSize": ".85rem"}), no_update
+    finally:
+        db.close()
+    return no_update, no_update, no_update
+
+
+@callback(
+    Output("download-courses-csv", "data"),
+    Input("export-courses-btn", "n_clicks"),
+    prevent_initial_call=True,
+)
+def export_courses(n):
+    if not n: return no_update
+    import pandas as pd
+    
+    courses = get_courses()
+    df = pd.DataFrame(courses)
+    # Rename columns for better readability
+    df = df.rename(columns={
+        "code": "Code", "libelle": "Libellé", "volume_horaire": "Volume Horaire",
+        "enseignant": "Enseignant", "h_done": "Heures Effectuées", "pct": "% Progression",
+        "nb_sessions": "Nombre de Séances"
+    })
+    # Select and order columns
+    df = df[["Code", "Libellé", "Volume Horaire", "Enseignant", "Heures Effectuées", "% Progression", "Nombre de Séances"]]
+    
+    return dcc.send_data_frame(df.to_csv, "export_cours.csv", index=False)

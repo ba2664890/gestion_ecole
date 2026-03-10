@@ -74,6 +74,11 @@ app.layout = serve_layout
 )
 def route(pathname, auth_data):
     try:
+        import dash
+        # Si auth_data est None, le sessionStorage n'a pas encore été lu.
+        # On vérifie le triggered_id pour savoir si l'input initial est le url ou le store.
+        triggered = dash.callback_context.triggered_prop_ids
+        
         is_auth = auth_data and auth_data.get("authenticated")
 
         if not is_auth:
