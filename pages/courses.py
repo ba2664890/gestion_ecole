@@ -64,7 +64,7 @@ def layout():
             "display": "grid", "gridTemplateColumns": "repeat(4, 1fr)",
             "gap": "1rem", "marginBottom": "1.5rem",
         }, className="animate-fade-up-1", children=[
-            _mini_kpi("import_contacts", "Cours Total", str(len(courses)), "#3b82f6"),
+            _mini_kpi("import_contacts", "Cours Total", str(len(courses)), "#6366f1"),
             _mini_kpi("schedule", "Heures Planifiées", f"{total_vh:.0f}h", "#8b5cf6"),
             _mini_kpi("check_circle", "Heures Effectuées", f"{total_done:.0f}h", "#10b981"),
             _mini_kpi("trending_up", "Cours en bonne voie", str(on_track), "#f59e0b"),
@@ -183,7 +183,7 @@ def _render_courses_grid(courses):
 
 def _course_card(c):
     pct = c["pct"]
-    status_color = "#10b981" if pct >= 75 else ("#f59e0b" if pct >= 40 else "#ef4444")
+    status_color = "#10b981" if pct >= 75 else ("#f59e0b" if pct >= 40 else "#f43f5e")
     status_label = "En bonne voie" if pct >= 75 else ("En cours" if pct >= 40 else "En retard")
 
     return html.Div(className="sga-card", style={"padding": "1.25rem"}, children=[

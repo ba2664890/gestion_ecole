@@ -22,8 +22,8 @@ CHART_LAYOUT = dict(
     height=320,
 )
 
-PRIMARY = "#13a4ec"
-COLORS = ["#13a4ec", "#8b5cf6", "#10b981", "#f59e0b", "#ef4444", "#3b82f6"]
+PRIMARY = "#6366f1"
+COLORS = ["#6366f1", "#8b5cf6", "#10b981", "#f59e0b", "#f43f5e", "#475569"]
 
 
 def get_analytics_data():
@@ -86,7 +86,7 @@ def make_histogram(notes):
     fig = go.Figure()
     fig.add_trace(go.Histogram(
         x=notes, nbinsx=20,
-        marker_color=PRIMARY, marker_line_color="#0e8bc9", marker_line_width=1,
+        marker_color=PRIMARY, marker_line_color="#4f46e5", marker_line_width=1,
         opacity=0.85, name="Étudiants",
         hovertemplate="Note: %{x}<br>Étudiants: %{y}<extra></extra>",
     ))
@@ -107,7 +107,7 @@ def make_histogram(notes):
             name="Distribution normale", opacity=0.6,
         ))
         # Add mean line
-        fig.add_vline(x=mean, line_dash="dash", line_color="#ef4444",
+        fig.add_vline(x=mean, line_dash="dash", line_color="#f43f5e",
                       annotation_text=f"Moy: {mean:.1f}", annotation_position="top right")
 
     layout = {**CHART_LAYOUT, "height": 300}
@@ -127,7 +127,7 @@ def make_course_comparison(course_avgs):
     codes = list(course_avgs.keys())
     avgs = list(course_avgs.values())
 
-    colors_list = [PRIMARY if a >= 10 else "#ef4444" for a in avgs]
+    colors_list = [PRIMARY if a >= 10 else "#f43f5e" for a in avgs]
 
     fig = go.Figure(go.Bar(
         x=codes, y=avgs,
@@ -182,7 +182,7 @@ def make_attendance_line(att_data):
 def make_bracket_pie(brackets):
     labels = list(brackets.keys())
     values = list(brackets.values())
-    colors = ["#ef4444", "#f97316", "#f59e0b", "#eab308", "#84cc16", "#22c55e", "#10b981"]
+    colors = ["#f43f5e", "#fb7185", "#f59e0b", "#fbbf24", "#34d399", "#10b981", "#059669"]
 
     fig = go.Figure(go.Pie(
         labels=labels, values=values,
@@ -219,7 +219,7 @@ def layout():
             "display": "grid", "gridTemplateColumns": "repeat(4, 1fr)",
             "gap": "1rem", "marginBottom": "1.5rem",
         }, className="animate-fade-up-1", children=[
-            _stat_card("Nb de notes saisies", str(data["n_grades"]), "grade", "#3b82f6"),
+            _stat_card("Nb de notes saisies", str(data["n_grades"]), "grade", "#6366f1"),
             _stat_card("Moyenne globale",
                        f"{(sum(data['all_notes'])/len(data['all_notes'])):.1f}/20" if data['all_notes'] else "—",
                        "bar_chart", "#8b5cf6"),

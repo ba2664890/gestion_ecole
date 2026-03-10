@@ -111,7 +111,8 @@ def make_dist_chart(data):
     # Labels in order
     labels = ["Insuffisant", "Passable", "Assez Bien", "Bien", "Très Bien"]
     values = [data.get(l, 0) for l in labels]
-    colors = ["#f87171", "#fbbf24", "#60a5fa", "#34d399", "#10b981"]
+    # Indigo, Amber, Blue, Emerald, Rose
+    colors = ["#f43f5e", "#f59e0b", "#6366f1", "#10b981", "#8b5cf6"]
 
     fig = go.Figure(go.Bar(
         x=labels, y=values,
@@ -138,9 +139,9 @@ def make_trend_chart(trend_data):
     
     fig = go.Figure(go.Scatter(
         x=x, y=y, mode="lines+markers",
-        line=dict(color="#3b82f6", width=3, shape="spline"),
-        marker=dict(size=6, color="#fff", line=dict(color="#3b82f6", width=2)),
-        fill="tozeroy", fillcolor="rgba(59,130,246,0.1)"
+        line=dict(color="#6366f1", width=3, shape="spline"),
+        marker=dict(size=6, color="#fff", line=dict(color="#6366f1", width=2)),
+        fill="tozeroy", fillcolor="rgba(99,102,241,0.1)"
     ))
     fig.update_layout(
          margin=dict(t=5, b=5, l=5, r=5),
@@ -161,7 +162,7 @@ def make_subject_chart(subject_data):
     
     fig = go.Figure(go.Bar(
         y=codes, x=avgs, orientation="h",
-        marker_color="rgba(139, 92, 246, 0.7)",
+        marker_color="rgba(99, 102, 241, 0.7)",
         marker_line_width=0,
         width=0.6
     ))
@@ -228,7 +229,7 @@ def refresh_dashboard(n):
             html.Div(className="sga-card", style={"padding": "1.25rem"}, children=[
                 html.Div(style={"display": "flex", "justifyContent": "space-between", "marginBottom": "1rem"}, children=[
                     html.H3("Tendance des Présences (30j)", style={"margin": 0, "fontSize": "1rem", "fontWeight": "700"}),
-                    html.Span("Dernière mise à jour: Aujourd'hui", style={"fontSize": ".75rem", "color": "#94a3b8"})
+                    html.Span("Actualisé", style={"fontSize": ".75rem", "color": "#94a3b8"})
                 ]),
                 dcc.Graph(figure=make_trend_chart(s["att_trend"]), config={"displayModeBar": False}),
             ]),
@@ -236,9 +237,9 @@ def refresh_dashboard(n):
             html.Div(className="sga-card", style={"padding": "1.25rem", "background": "linear-gradient(135deg, #1e293b, #0f172a)", "color": "white"}, children=[
                 html.H3("Actions Rapides", style={"margin": "0 0 1.25rem 0", "fontSize": "1rem", "color": "white"}),
                 html.Div(style={"display": "flex", "flexDirection": "column", "gap": ".75rem"}, children=[
-                    _dash_action("add_circle", "Nouvelle Séance", "/sessions", "rgba(59, 130, 246, 0.2)"),
-                    _dash_action("upload", "Importer Notes", "/grades", "rgba(139, 92, 246, 0.2)"),
-                    _dash_action("person_add", "Inscrire Étudiant", "/students", "rgba(16, 185, 129, 0.2)"),
+                    _dash_action("add_circle", "Nouvelle Séance", "/sessions", "rgba(255, 255, 255, 0.08)"),
+                    _dash_action("upload", "Importer Notes", "/grades", "rgba(255, 255, 255, 0.08)"),
+                    _dash_action("person_add", "Inscrire Étudiant", "/students", "rgba(255, 255, 255, 0.08)"),
                 ])
             ]),
         ]),

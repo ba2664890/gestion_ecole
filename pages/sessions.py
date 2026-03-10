@@ -75,7 +75,7 @@ def layout():
                     html.Div(style={"display": "flex", "alignItems": "center", "gap": ".75rem", "marginBottom": "1.5rem"}, children=[
                         html.Div(style={
                             "width": "40px", "height": "40px", "borderRadius": "10px",
-                            "background": "rgba(19,164,236,.1)",
+                            "background": "rgba(99,102,241,.1)",
                             "display": "flex", "alignItems": "center", "justifyContent": "center",
                         }, children=[
                             html.Span("edit_calendar", className="material-symbols-outlined",
@@ -199,8 +199,8 @@ def _render_checklist(students, absent_ids=None):
                 children=[
                     html.Div(style={
                         "width": "20px", "height": "20px", "borderRadius": "5px",
-                        "border": f"2px solid {'#ef4444' if is_absent else '#e2e8f0'}",
-                        "background": "#fee2e2" if is_absent else "#fff",
+                        "border": f"2px solid {'#f43f5e' if is_absent else '#e2e8f0'}",
+                        "background": "#fff1f2" if is_absent else "#fff",
                         "display": "flex", "alignItems": "center", "justifyContent": "center",
                         "flexShrink": 0, "transition": "all .15s",
                     }, children=[
@@ -210,7 +210,7 @@ def _render_checklist(students, absent_ids=None):
                     html.Span(s["name"], style={"fontSize": ".875rem", "fontWeight": "500"}),
                     html.Span("Absent", style={
                         "marginLeft": "auto", "fontSize": ".7rem", "fontWeight": "700",
-                        "color": "#ef4444", "display": "block" if is_absent else "none",
+                        "color": "#f43f5e", "display": "block" if is_absent else "none",
                     }),
                 ],
             )
@@ -221,7 +221,7 @@ def _render_checklist(students, absent_ids=None):
             "marginBottom": ".75rem", "alignItems": "center",
         }, children=[
             html.Span(f"{len(students)} étudiants", style={"fontSize": ".8rem", "color": "#64748b", "fontWeight": "600"}),
-            html.Span(f"{len(absent_ids)} absent(s)", style={"fontSize": ".8rem", "color": "#ef4444", "fontWeight": "700"}),
+            html.Span(f"{len(absent_ids)} absent(s)", style={"fontSize": ".8rem", "color": "#f43f5e", "fontWeight": "700"}),
         ]),
         html.Div(className="custom-checklist", style={"maxHeight": "280px", "overflowY": "auto"}, children=items),
         html.P("Cliquez pour marquer absent", style={"fontSize": ".7rem", "color": "#94a3b8", "marginTop": ".75rem", "textAlign": "center"}),
@@ -261,7 +261,7 @@ def _render_history(sessions, filter_course=None):
                         f"{s['total'] - s['absent_count']}/{s['total']}",
                         style={
                             "fontSize": ".8rem", "fontWeight": "700",
-                            "color": "#ef4444" if s["absent_count"] > 0 else "#10b981",
+                            "color": "#f43f5e" if s["absent_count"] > 0 else "#10b981",
                         }
                     )),
                 ])

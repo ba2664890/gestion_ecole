@@ -28,8 +28,8 @@ def layout():
             html.Div(className="sga-card animate-fade-up-1", children=[
                 html.Div(style={"display": "flex", "alignItems": "center", "gap": ".75rem", "marginBottom": "1.5rem"}, children=[
                     html.Div(style={"width": "44px", "height": "44px", "borderRadius": "12px",
-                                    "background": "#eff6ff", "display": "flex", "alignItems": "center", "justifyContent": "center"},
-                             children=[html.Span("manage_accounts", className="material-symbols-outlined", style={"color": "#3b82f6", "fontSize": "1.3rem"})]),
+                                    "background": "rgba(99,102,241,.1)", "display": "flex", "alignItems": "center", "justifyContent": "center"},
+                             children=[html.Span("manage_accounts", className="material-symbols-outlined", style={"color": "#6366f1", "fontSize": "1.3rem"})]),
                     html.H3("Gestion des Utilisateurs", style={"fontWeight": "700", "margin": 0}),
                 ]),
 
@@ -114,11 +114,11 @@ def _db_info_block():
     try:
         from models import Student, Course, Session, Attendance, Grade
         items = [
-            ("Étudiants", db.query(Student).count(), "person", "#3b82f6"),
+            ("Étudiants", db.query(Student).count(), "person", "#6366f1"),
             ("Cours", db.query(Course).count(), "menu_book", "#8b5cf6"),
             ("Séances", db.query(Session).count(), "calendar_today", "#f59e0b"),
             ("Présences", db.query(Attendance).count(), "how_to_reg", "#10b981"),
-            ("Notes", db.query(Grade).count(), "grade", "#ef4444"),
+            ("Notes", db.query(Grade).count(), "grade", "#f43f5e"),
         ]
         return html.Div(style={"display": "flex", "flexDirection": "column", "gap": ".5rem"}, children=[
             html.Div(style={
@@ -160,11 +160,11 @@ def create_user(n, nom, username, pwd, role):
     if not n:
         return no_update
     if not nom or not username or not pwd:
-        return html.Div("Veuillez remplir tous les champs.", style={"color": "#ef4444", "fontSize": ".85rem"})
+        return html.Div("Veuillez remplir tous les champs.", style={"color": "#f43f5e", "fontSize": ".85rem"})
     db = SessionLocal()
     try:
         if db.query(User).filter_by(username=username).first():
-            return html.Div("Ce nom d'utilisateur est déjà pris.", style={"color": "#ef4444", "fontSize": ".85rem"})
+            return html.Div("Ce nom d'utilisateur est déjà pris.", style={"color": "#f43f5e", "fontSize": ".85rem"})
         u = User(
             username=username,
             password_hash=hashlib.sha256(pwd.encode()).hexdigest(),
@@ -176,6 +176,6 @@ def create_user(n, nom, username, pwd, role):
         return html.Div(f"✓ Utilisateur '{username}' créé.", style={"color": "#10b981", "fontWeight": "600", "fontSize": ".85rem"})
     except Exception as e:
         db.rollback()
-        return html.Div(f"Erreur: {e}", style={"color": "#ef4444", "fontSize": ".85rem"})
+        return html.Div(f"Erreur: {e}", style={"color": "#f43f5e", "fontSize": ".85rem"})
     finally:
         db.close()

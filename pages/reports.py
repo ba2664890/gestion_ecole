@@ -47,8 +47,8 @@ def layout():
                 html.Div(style={"display": "flex", "alignItems": "center", "gap": ".75rem", "marginBottom": "1.5rem"}, children=[
                     html.Div(style={
                         "width": "48px", "height": "48px", "borderRadius": "12px",
-                        "background": "#eff6ff", "display": "flex", "alignItems": "center", "justifyContent": "center",
-                    }, children=[html.Span("picture_as_pdf", className="material-symbols-outlined", style={"color": "#3b82f6", "fontSize": "1.5rem"})]),
+                        "background": "rgba(99,102,241,.1)", "display": "flex", "alignItems": "center", "justifyContent": "center",
+                    }, children=[html.Span("picture_as_pdf", className="material-symbols-outlined", style={"color": "#6366f1", "fontSize": "1.5rem"})]),
                     html.Div([
                         html.H3("Bulletin de Notes", style={"fontWeight": "700", "margin": 0}),
                         html.P("Export PDF individuel avec toutes les notes et absences",
@@ -76,8 +76,8 @@ def layout():
                 html.Div(style={"display": "flex", "alignItems": "center", "gap": ".75rem", "marginBottom": "1.5rem"}, children=[
                     html.Div(style={
                         "width": "48px", "height": "48px", "borderRadius": "12px",
-                        "background": "#f0fdf4", "display": "flex", "alignItems": "center", "justifyContent": "center",
-                    }, children=[html.Span("event_note", className="material-symbols-outlined", style={"color": "#22c55e", "fontSize": "1.5rem"})]),
+                        "background": "rgba(16,185,129,.1)", "display": "flex", "alignItems": "center", "justifyContent": "center",
+                    }, children=[html.Span("event_note", className="material-symbols-outlined", style={"color": "#10b981", "fontSize": "1.5rem"})]),
                     html.Div([
                         html.H3("Rapport de Présences", style={"fontWeight": "700", "margin": 0}),
                         html.P("Export Excel du taux de présence par cours",
@@ -91,8 +91,8 @@ def layout():
                     html.Span("table_chart", className="material-symbols-outlined", style={"fontSize": "1rem"}),
                     "Exporter Excel Présences",
                 ], id="export-attendance-btn", n_clicks=0, className="btn-primary",
-                style={"width": "100%", "justifyContent": "center", "background": "#22c55e",
-                       "boxShadow": "0 4px 12px rgba(34,197,94,.25)"}),
+                style={"width": "100%", "justifyContent": "center", "background": "#10b981",
+                       "boxShadow": "0 4px 12px rgba(16,185,129,.25)"}),
                 html.Div(id="attendance-export-feedback", style={"marginTop": "1rem"}),
                 dcc.Download(id="download-attendance"),
             ]),
@@ -141,12 +141,12 @@ def _render_quick_stats():
         att_pct = ((total_att - absents) / total_att * 100) if total_att > 0 else 100
 
         items = [
-            ("Étudiants inscrits", str(n_students), "#3b82f6"),
+            ("Étudiants inscrits", str(n_students), "#6366f1"),
             ("Cours actifs", str(n_courses), "#8b5cf6"),
             ("Séances enregistrées", str(n_sessions), "#f59e0b"),
             ("Notes saisies", str(n_grades), "#10b981"),
-            ("Moyenne générale", f"{avg:.2f}/20", "#ef4444" if avg < 10 else "#10b981"),
-            ("Taux présence", f"{att_pct:.1f}%", "#ef4444" if att_pct < 85 else "#10b981"),
+            ("Moyenne générale", f"{avg:.2f}/20", "#f43f5e" if avg < 10 else "#10b981"),
+            ("Taux présence", f"{att_pct:.1f}%", "#f43f5e" if att_pct < 85 else "#10b981"),
         ]
         return html.Div(style={"display": "flex", "flexDirection": "column", "gap": ".65rem"}, children=[
             html.Div(style={
@@ -173,7 +173,7 @@ def _render_quick_stats():
 )
 def generate_bulletin(n, student_id, etab):
     if not n or not student_id:
-        return no_update, html.Div("Veuillez sélectionner un étudiant.", style={"color": "#ef4444", "fontSize": ".85rem"})
+        return no_update, html.Div("Veuillez sélectionner un étudiant.", style={"color": "#f43f5e", "fontSize": ".85rem"})
 
     try:
         from reportlab.lib import colors
@@ -206,7 +206,7 @@ def generate_bulletin(n, student_id, etab):
         doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=2*cm, bottomMargin=2*cm,
                                 leftMargin=2*cm, rightMargin=2*cm)
         styles = getSampleStyleSheet()
-        primary_color = colors.HexColor("#13a4ec")
+        primary_color = colors.HexColor("#6366f1")
         dark_color = colors.HexColor("#0f172a")
         gray_color = colors.HexColor("#64748b")
 
@@ -312,7 +312,7 @@ def generate_bulletin(n, student_id, etab):
         return no_update, html.Div("⚠ Module ReportLab non installé. Installez-le avec: pip install reportlab",
                                    style={"color": "#f59e0b", "fontSize": ".85rem"})
     except Exception as e:
-        return no_update, html.Div(f"Erreur: {e}", style={"color": "#ef4444", "fontSize": ".85rem"})
+        return no_update, html.Div(f"Erreur: {e}", style={"color": "#f43f5e", "fontSize": ".85rem"})
 
 
 @callback(
@@ -362,7 +362,7 @@ def export_attendance(n, course_id):
             "✓ Rapport exporté.", style={"color": "#10b981", "fontWeight": "600", "fontSize": ".875rem"}
         )
     except Exception as e:
-        return no_update, html.Div(f"Erreur: {e}", style={"color": "#ef4444", "fontSize": ".85rem"})
+        return no_update, html.Div(f"Erreur: {e}", style={"color": "#f43f5e", "fontSize": ".85rem"})
 
 
 @callback(

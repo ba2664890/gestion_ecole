@@ -132,9 +132,9 @@ def layout():
                     # Error message
                     html.Div(id="login-error", style={"display": "none"}, children=[
                         html.Div(style={
-                            "background": "#fef2f2", "border": "1px solid #fecaca",
+                            "background": "#fff1f2", "border": "1px solid #fecdd3",
                             "borderRadius": "10px", "padding": ".75rem 1rem",
-                            "color": "#dc2626", "fontSize": ".875rem",
+                            "color": "#f43f5e", "fontSize": ".875rem",
                             "marginBottom": "1rem", "display": "flex",
                             "alignItems": "center", "gap": ".5rem",
                         }, children=[
@@ -200,11 +200,11 @@ def layout():
                     # Demo hint
                     html.Div(style={
                         "marginTop": "1.5rem", "padding": ".75rem 1rem",
-                        "background": "#f0f9ff", "borderRadius": "10px",
-                        "border": "1px solid #bae6fd",
+                        "background": "rgba(99, 102, 241, 0.08)", "borderRadius": "10px",
+                        "border": "1px solid rgba(99, 102, 241, 0.15)",
                     }, children=[
                         html.P("💡 Démo : admin / admin123", style={
-                            "fontSize": ".8rem", "color": "#0369a1", "margin": 0, "fontWeight": "600",
+                            "fontSize": ".8rem", "color": "var(--primary)", "margin": 0, "fontWeight": "600",
                         })
                     ]),
                 ]),

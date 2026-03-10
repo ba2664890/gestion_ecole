@@ -103,7 +103,7 @@ def _tab_global(summary):
     def grade_badge(g):
         if g is None:
             return html.Span("—", style={"color": "#94a3b8"})
-        color = "#10b981" if g >= 14 else ("#f59e0b" if g >= 10 else "#ef4444")
+        color = "#10b981" if g >= 14 else ("#f59e0b" if g >= 10 else "#f43f5e")
         return html.Span(f"{g}/20", style={"fontWeight": "700", "color": color})
 
     return html.Div(className="sga-card", style={"padding": 0, "overflow": "hidden"}, children=[
@@ -197,7 +197,7 @@ def _tab_import(course_opts):
                 html.Div(style={
                     "width": "44px", "height": "44px", "borderRadius": "12px",
                     "background": "#eff6ff", "display": "flex", "alignItems": "center", "justifyContent": "center",
-                }, children=[html.Span("upload_file", className="material-symbols-outlined", style={"color": "#3b82f6"})]),
+                }, children=[html.Span("upload_file", className="material-symbols-outlined", style={"color": "#6366f1"})]),
                 html.Div([
                     html.H3("Importer les Notes", style={"fontWeight": "700", "fontSize": ".95rem", "margin": 0}),
                     html.P("Fichier Excel complété avec les notes", style={"color": "#94a3b8", "fontSize": ".8rem", "margin": 0}),
@@ -343,7 +343,7 @@ def process_upload(contents, filename):
         return no_update
     if not filename.endswith((".xlsx", ".xls")):
         return html.Div("Format de fichier non supporté. Utilisez .xlsx ou .xls",
-                        style={"color": "#ef4444", "fontSize": ".875rem", "marginTop": "1rem"})
+                        style={"color": "#f43f5e", "fontSize": ".875rem", "marginTop": "1rem"})
     try:
         import pandas as pd
         content_type, content_string = contents.split(",")
@@ -353,7 +353,7 @@ def process_upload(contents, filename):
         required = ["ID", "Note"]
         for col in required:
             if col not in df.columns:
-                return html.Div(f"Colonne manquante: {col}", style={"color": "#ef4444", "fontSize": ".875rem", "marginTop": "1rem"})
+                return html.Div(f"Colonne manquante: {col}", style={"color": "#f43f5e", "fontSize": ".875rem", "marginTop": "1rem"})
 
         db = SessionLocal()
         updated, errors = 0, []

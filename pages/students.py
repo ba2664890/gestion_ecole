@@ -209,9 +209,9 @@ def _render_table(students, search=""):
         ])
 
     def grade_color(g):
-        if g >= 14: return "#10b981"
-        if g >= 10: return "#f59e0b"
-        return "#ef4444"
+        if g >= 14: return "#10b981" # Emerald
+        if g >= 10: return "#f59e0b" # Amber
+        return "#f43f5e" # Rose
 
     return html.Table(className="sga-table", style={"width": "100%"}, children=[
         html.Thead(html.Tr([
@@ -240,10 +240,9 @@ def _render_table(students, search=""):
                 html.Td(s["date_naissance"], style={"fontSize": ".825rem", "color": "#64748b"}),
                 html.Td(html.Div([
                     html.Div(style={"display": "flex", "alignItems": "center", "gap": ".5rem"}, children=[
-                        html.Div(className="progress-wrap", style={"flex": 1, "height": "6px"}, children=[
-                            html.Div(className=f"progress-fill {'danger' if s['abs_rate'] > 20 else ''}",
-                                     style={"width": f"{min(s['abs_rate'], 100)}%",
-                                            "background": "#ef4444" if s["abs_rate"] > 20 else "#f59e0b" if s["abs_rate"] > 10 else "#10b981"}),
+                        html.Div(className="progress-wrap", style={"flex": 1, "height": "8px"}, children=[
+                            html.Div(className=f"progress-fill {'danger' if s['abs_rate'] > 20 else 'warning' if s['abs_rate'] > 10 else 'success'}",
+                                     style={"width": f"{min(s['abs_rate'], 100)}%"}),
                         ]),
                         html.Span(f"{s['abs_rate']}%", style={"fontSize": ".75rem", "fontWeight": "600",
                                                                 "color": "#ef4444" if s["abs_rate"] > 20 else "#64748b"}),
