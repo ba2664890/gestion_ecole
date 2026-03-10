@@ -201,6 +201,7 @@ def shell_layout(pathname):
                     html.H2(get_page_title(pathname), style={"fontSize": "1.1rem", "fontWeight": "700", "margin": 0}),
                     html.P(get_page_subtitle(pathname), style={"fontSize": ".8rem", "color": "#64748b", "margin": 0}),
                 ]),
+                # Actions (Search + Icons)
                 html.Div([
                     html.Div(id="topbar-search", children=[
                         html.Span("search", className="material-symbols-outlined", style={"color": "#94a3b8", "fontSize": "1.1rem"}),
@@ -213,12 +214,50 @@ def shell_layout(pathname):
                         "padding": ".5rem 1rem", "background": "#fff",
                         "borderRadius": "10px", "border": "1px solid #e2e8f0",
                     }),
+                    
+                    # Notifications
                     html.Div([
-                        html.Span("notifications", className="material-symbols-outlined"),
-                    ], className="topbar-btn"),
+                        html.Div([
+                            html.Span("notifications", className="material-symbols-outlined"),
+                            html.Span(className="notification-dot pulse"), # Ping effect
+                        ], className="notification-wrapper topbar-btn", id="btn-notifications"),
+                        
+                        html.Div(id="dropdown-notifications", className="topbar-dropdown", children=[
+                            html.Div(className="dropdown-header", children=[
+                                html.H4("Notifications"),
+                                html.Span("3 nouvelles", style={"fontSize": ".7rem", "color": "var(--primary)", "fontWeight": "700"})
+                            ]),
+                            html.Div(className="dropdown-content", children=[
+                                _dropdown_item("Nouvelle Note", "Un étudiant a reçu une nouvelle note en Mathématiques.", "grade", "#6366f1"),
+                                _dropdown_item("Absence Signalée", "Awa Diop a été marquée absente ce matin.", "event_busy", "#f43f5e"),
+                                _dropdown_item("Rapport Prêt", "Le rapport mensuel de présence est disponible.", "description", "#10b981"),
+                            ]),
+                            html.Div(className="dropdown-footer", children=[
+                                html.A("Voir toutes les notifications", href="#")
+                            ])
+                        ])
+                    ], style={"position": "relative"}),
+
+                    # Account
                     html.Div([
-                        html.Span("account_circle", className="material-symbols-outlined"),
-                    ], className="topbar-btn"),
+                        html.Div([
+                            html.Span("account_circle", className="material-symbols-outlined"),
+                        ], className="topbar-btn", id="btn-account"),
+                        
+                        html.Div(id="dropdown-account", className="topbar-dropdown", children=[
+                            html.Div(className="dropdown-header", children=[
+                                html.H4("Mon Compte"),
+                            ]),
+                            html.Div(className="dropdown-content", children=[
+                                _dropdown_item("Profil", "Voir vos informations personnelles", "person", "#6366f1"),
+                                _dropdown_item("Paramètres", "Gérer votre compte", "settings", "#64748b"),
+                                _dropdown_item("Support", "Besoin d'aide ?", "help", "#10b981"),
+                            ]),
+                            html.Div(className="dropdown-footer", children=[
+                                html.A("Déconnexion", href="#", id="account-logout-btn", style={"color": "#f43f5e"})
+                            ])
+                        ])
+                    ], style={"position": "relative"}),
                 ], style={"display": "flex", "alignItems": "center", "gap": ".75rem"}),
             ]),
             # Page content
@@ -267,6 +306,55 @@ def logout(n):
     if n:
         return {"authenticated": False}
     return no_update
+
+
+@callback(
+    Output("auth-store", "data", allow_duplicate=True),
+    Input("account-logout-btn", "n_clicks"),
+    prevent_initial_call=True,
+)
+def account_logout(n):
+    if n:
+        return {"authenticated": False}
+    return no_update
+
+
+@callback(
+    Output("dropdown-notifications", "className"),
+    Output("btn-notifications", "className"),
+    Input("btn-notifications", "n_clicks"),
+    State("dropdown-notifications", "className"),
+    prevent_initial_call=True,
+)
+def toggle_notifications(n, current_class):
+    if "show" in current_class:
+        return "topbar-dropdown", "topbar-btn"
+    return "topbar-dropdown show", "topbar-btn active"
+
+
+@callback(
+    Output("dropdown-account", "className"),
+    Output("btn-account", "className"),
+    Input("btn-account", "n_clicks"),
+    State("dropdown-account", "className"),
+    prevent_initial_call=True,
+)
+def toggle_account(n, current_class):
+    if "show" in current_class:
+        return "topbar-dropdown", "topbar-btn"
+    return "topbar-dropdown show", "topbar-btn active"
+
+
+def _dropdown_item(title, subtitle, icon, color):
+    return html.Div(className="dropdown-item", children=[
+        html.Div(className="item-icon", style={"color": color}, children=[
+            html.Span(icon, className="material-symbols-outlined")
+        ]),
+        html.Div(className="item-text", children=[
+            html.H5(title),
+            html.P(subtitle)
+        ])
+    ])
 
 
 if __name__ == "__main__":
