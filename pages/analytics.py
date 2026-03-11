@@ -10,6 +10,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from models import SessionLocal, Student, Course, Grade, Attendance, Session
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 from collections import defaultdict
 
 
@@ -46,7 +47,12 @@ def get_analytics_data():
             course_avgs[c.code] = sum(notes) / len(notes) if notes else 0
 
         # Attendance per session
-        sessions = db.query(Session).order_by(Session.date).all()
+        sessions = (
+            db.query(Session)
+            .options(joinedload(Session.course), joinedload(Session.attendances))
+            .order_by(Session.date)
+            .all()
+        )
         att_data = []
         for s in sessions:
             total = len(s.attendances)

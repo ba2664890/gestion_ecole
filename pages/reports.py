@@ -6,6 +6,7 @@ Generate PDF bulletins, attendance reports, Excel exports
 from dash import html, dcc, Input, Output, State, callback, no_update
 from models import SessionLocal, Student, Course, Grade, Attendance, Session
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 import io
 import base64
 
@@ -189,7 +190,12 @@ def generate_bulletin(n, student_id, etab):
             if not student:
                 return no_update, html.Div("Étudiant introuvable.", style={"color": "#ef4444"})
 
-            grades = db.query(Grade).filter_by(student_id=student_id).all()
+            grades = (
+                db.query(Grade)
+                .options(joinedload(Grade.course))
+                .filter_by(student_id=student_id)
+                .all()
+            )
             attendances = db.query(Attendance).filter_by(student_id=student_id).all()
             total_att = len(attendances)
             absents = sum(1 for a in attendances if a.absent)
@@ -199,6 +205,14 @@ def generate_bulletin(n, student_id, etab):
                 avg = sum(g.note * g.coefficient for g in grades) / sum(g.coefficient for g in grades)
             else:
                 avg = 0
+            # Précharger les données avant fermeture de session
+            grade_rows = [{
+                "libelle": g.course.libelle if g.course else "—",
+                "code": g.course.code if g.course else "—",
+                "note": g.note,
+                "coefficient": g.coefficient,
+                "type_evaluation": g.type_evaluation,
+            } for g in grades]
         finally:
             db.close()
 
@@ -252,18 +266,18 @@ def generate_bulletin(n, student_id, etab):
         story.append(Spacer(1, 0.3*cm))
 
         grade_data = [["Matière", "Code", "Note /20", "Coeff.", "Note × Coeff.", "Type"]]
-        for g in grades:
-            mention = "TB" if g.note >= 16 else ("B" if g.note >= 14 else ("AB" if g.note >= 12 else ("P" if g.note >= 10 else "I")))
+        for g in grade_rows:
+            mention = "TB" if g["note"] >= 16 else ("B" if g["note"] >= 14 else ("AB" if g["note"] >= 12 else ("P" if g["note"] >= 10 else "I")))
             grade_data.append([
-                g.course.libelle if g.course else "—",
-                g.course.code if g.course else "—",
-                f"{g.note:.2f}",
-                f"{g.coefficient:.1f}",
-                f"{g.note * g.coefficient:.2f}",
-                g.type_evaluation,
+                g["libelle"],
+                g["code"],
+                f"{g['note']:.2f}",
+                f"{g['coefficient']:.1f}",
+                f"{g['note'] * g['coefficient']:.2f}",
+                g["type_evaluation"],
             ])
 
-        if not grades:
+        if not grade_rows:
             grade_data.append(["Aucune note disponible", "", "", "", "", ""])
 
         grade_table = Table(grade_data, colWidths=[7*cm, 2.5*cm, 2.5*cm, 2*cm, 3*cm, 2.5*cm])
@@ -376,7 +390,11 @@ def export_all_grades(n):
     import pandas as pd
     db = SessionLocal()
     try:
-        grades = db.query(Grade).all()
+        grades = (
+            db.query(Grade)
+            .options(joinedload(Grade.course), joinedload(Grade.student))
+            .all()
+        )
         rows = [{
             "Student_ID": g.student_id,
             "Nom": g.student.nom if g.student else "—",
