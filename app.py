@@ -15,7 +15,7 @@ from models import init_db, SessionLocal, User
 from pages import (
     login, dashboard, students, courses, sessions, 
     analytics, reports, settings_page, grades,
-    schedule, projects
+    schedule, projects, docs
 )
 
 # Init DB on startup
@@ -208,6 +208,7 @@ def shell_layout(pathname):
             "/schedule": schedule.layout,
             "/projects": projects.layout,
             "/settings": settings_page.layout,
+            "/docs": docs.layout,
         }
 
         page_fn = page_map.get(pathname, dashboard.layout)
@@ -299,6 +300,9 @@ def shell_layout(pathname):
             # Global Floating Action Button (FAB)
             html.Div(className="fab-container", children=[
                 html.Div(className="fab-menu", children=[
+                    dcc.Link(html.Div([
+                        html.Span("description", className="material-symbols-outlined"),
+                    ], className="fab-item", id="fab-docs", title="Documentation"), href="/docs", style={"textDecoration": "none"}),
                     html.Div([
                         html.Span("casino", className="material-symbols-outlined"),
                     ], className="fab-item", id="fab-random-gen", title="Générer Données Aléatoires"),
@@ -326,6 +330,7 @@ def get_page_title(path):
         "/schedule": "Emploi du Temps",
         "/projects": "Projets & Groupes",
         "/settings": "Paramètres",
+        "/docs": "Documentation du Projet",
     }
     return titles.get(path, "SGA")
 
@@ -342,6 +347,7 @@ def get_page_subtitle(path):
         "/schedule": "Organisation hebdomadaire des cours",
         "/projects": "Suivi des travaux de groupe ENSAE",
         "/settings": "Configuration du système",
+        "/docs": "Consultez le manuel d'utilisation et les notes techniques",
     }
     return subtitles.get(path, "")
 
