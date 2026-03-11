@@ -12,18 +12,22 @@ def layout():
     return html.Div(id="login-page", style={"minHeight": "100vh"}, children=[
         # Left decorative panel
         html.Div(className="login-left", children=[
-            # Video background (university ambiance)
+            # Image background (university campus)
             html.Div(className="hero-video-wrap", children=[
-                html.Video(
-                    autoPlay=True, loop=True, muted=True,
-                    children=[
-                        html.Source(
-                            src="https://cdn.pixabay.com/video/2022/06/27/121837-726040052_large.mp4",
-                            type="video/mp4"
-                        )
-                    ],
-                    style={"width": "100%", "height": "100%", "objectFit": "cover"}
+                html.Img(
+                    src="/assets/login_bg.png",
+                    style={
+                        "width": "100%", "height": "100%",
+                        "objectFit": "cover",
+                        "objectPosition": "center",
+                    }
                 ),
+                # Blue gradient overlay
+                html.Div(style={
+                    "position": "absolute", "inset": 0,
+                    "background": "linear-gradient(135deg, rgba(29,78,216,0.82) 0%, rgba(37,99,235,0.70) 50%, rgba(14,165,233,0.65) 100%)",
+                    "zIndex": 1,
+                }),
             ]),
 
             # Floating decorative circles
