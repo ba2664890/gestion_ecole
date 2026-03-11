@@ -86,9 +86,18 @@ def layout():
 
         # Tab Navigation
         html.Div(className="tab-nav animate-fade-up-1", children=[
-            html.Button("📊 Vue Globale", id="tab-global", className="tab-btn active", n_clicks=0),
-            html.Button("📝 Saisie par Cours", id="tab-course", className="tab-btn", n_clicks=0),
-            html.Button("📥 Import Excel", id="tab-import", className="tab-btn", n_clicks=0),
+            html.Button([
+                html.Span("bar_chart", className="material-symbols-outlined", style={"fontSize": "1rem"}),
+                " Vue Globale",
+            ], id="tab-global", className="tab-btn active", n_clicks=0),
+            html.Button([
+                html.Span("edit_note", className="material-symbols-outlined", style={"fontSize": "1rem"}),
+                " Saisie par Cours",
+            ], id="tab-course", className="tab-btn", n_clicks=0),
+            html.Button([
+                html.Span("upload_file", className="material-symbols-outlined", style={"fontSize": "1rem"}),
+                " Import Excel",
+            ], id="tab-import", className="tab-btn", n_clicks=0),
         ]),
 
         # Tab content
