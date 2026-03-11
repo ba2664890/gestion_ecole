@@ -195,7 +195,7 @@ def _project_modal(courses):
     Output("p-progress", "value"),
     Output("p-members", "value"),
     Output("editing-p-id", "data"),
-    Input("fab-new-project", "n_clicks"),
+    Input("global-action-store", "data"),
     Input({"type": "edit-p", "index": ALL}, "n_clicks"),
     Input("close-p-modal", "n_clicks"),
     Input("save-p-btn", "n_clicks"),
@@ -210,14 +210,19 @@ def _project_modal(courses):
     State("editing-p-id", "data"),
     prevent_initial_call=True
 )
-def manage_project_modal(new_n, edit_n, close_n, save_n, is_open, title, course, status, priority, deadline, progress, members, e_id):
+def manage_project_modal(global_action, edit_n, close_n, save_n, is_open, title, course, status, priority, deadline, progress, members, e_id):
     ctx = dash.callback_context
-    if not ctx.triggered or not ctx.triggered[0].get("value"): return no_update
+    if not ctx.triggered: return no_update
     
     tid = ctx.triggered[0]["prop_id"]
     
-    if "fab-new-project" in tid:
-        return True, "", None, "To Do", "badge-blue", "", 0, 1, None
+    if "global-action-store" in tid:
+        val = ctx.triggered[0].get("value")
+        if val and isinstance(val, dict) and val.get("action") == "open_project_modal":
+            return True, "", None, "To Do", "badge-blue", "", 0, 1, None
+        return no_update
+
+    if not ctx.triggered[0].get("value"): return no_update
         
     if "edit-p" in tid:
         pid = int(tid.split(",")[0].split(":")[1])

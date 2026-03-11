@@ -54,9 +54,16 @@ def serve_layout():
         # UI State stores
         dcc.Store(id="notification-store", data=None),
         dcc.Store(id="global-trigger-store", data=None),
+        dcc.Store(id="global-action-store", data=None),
 
         # URL
         dcc.Location(id="url", refresh=False),
+
+        # Dialogs
+        dcc.ConfirmDialog(
+            id="confirm-random",
+            message="Voulez-vous générer des données aléatoires de démonstration (projets et séances) ?",
+        ),
 
         # Toast notifications container
         html.Div(id="toast-container", className="toast-container"),
@@ -465,8 +472,18 @@ def display_pomo(data):
     return display, class_name
 
 @callback(
-    Output("notification-store", "data"),
+    Output("confirm-random", "displayed"),
     Input("fab-random-gen", "n_clicks"),
+    prevent_initial_call=True
+)
+def display_confirm_random(n):
+    if n:
+        return True
+    return False
+
+@callback(
+    Output("notification-store", "data"),
+    Input("confirm-random", "submit_n_clicks"),
     prevent_initial_call=True
 )
 def trigger_random_gen(n):
@@ -478,6 +495,19 @@ def trigger_random_gen(n):
         return {"message": "Données aléatoires générées avec succès !", "type": "success"}
     except Exception as e:
         return {"message": f"Erreur lors de la génération : {e}", "type": "error"}
+
+@callback(
+    Output("url", "pathname", allow_duplicate=True),
+    Output("global-action-store", "data"),
+    Input("fab-new-project", "n_clicks"),
+    State("url", "pathname"),
+    prevent_initial_call=True
+)
+def handle_fab_new_project(n, path):
+    if not n: return no_update, no_update
+    if path != "/projects":
+        return "/projects", {"action": "open_project_modal", "ts": n}
+    return no_update, {"action": "open_project_modal", "ts": n}
 
 @callback(
     Output("toast-container", "children"),
