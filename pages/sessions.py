@@ -305,11 +305,20 @@ def toggle_absent(n_clicks_list, ids, absent_ids):
     else:
         absent_ids = absent_ids + [student_id]
 
+    # Charger les noms complets depuis la DB
+    db = SessionLocal()
+    try:
+        students = db.query(Student).all()
+        name_map = {s.id: f"{s.prenom} {s.nom}" for s in students}
+    finally:
+        db.close()
+
     classnames = []
     children_list = []
     for id_obj in ids:
         sid = id_obj["index"]
         is_absent = sid in absent_ids
+        student_name = name_map.get(sid, f"Étudiant {sid}")
         classnames.append(f"custom-checklist-item {'checked' if is_absent else ''}")
         children_list.append([
             html.Div(style={
@@ -322,7 +331,7 @@ def toggle_absent(n_clicks_list, ids, absent_ids):
                 html.Span("close", className="material-symbols-outlined",
                           style={"fontSize": ".85rem", "color": "#ef4444", "display": "block" if is_absent else "none"}),
             ]),
-            html.Span(f"ID: {sid}", style={"fontSize": ".875rem", "fontWeight": "500"}),
+            html.Span(student_name, style={"fontSize": ".875rem", "fontWeight": "500"}),
             html.Span("Absent", style={
                 "marginLeft": "auto", "fontSize": ".7rem", "fontWeight": "700",
                 "color": "#ef4444", "display": "block" if is_absent else "none",
