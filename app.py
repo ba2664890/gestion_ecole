@@ -181,18 +181,6 @@ def shell_layout(pathname):
                 for item in [nav_items[6], nav_items[9]]
             ],
         ]),
-        # Pomodoro Timer Widget
-        html.Div(className="pomodoro-container", children=[
-            html.Div("FOCUS MODE", className="pomo-label"),
-            html.Div("25:00", id="pomo-display", className="pomo-timer"),
-            html.Div(className="pomo-controls", children=[
-                html.Button(html.Span("play_arrow", className="material-symbols-outlined"), id="pomo-start-btn", className="pomo-btn", n_clicks=0),
-                html.Button(html.Span("refresh", className="material-symbols-outlined"), id="pomo-reset-btn", className="pomo-btn", n_clicks=0),
-            ]),
-            dcc.Interval(id="pomo-interval", interval=1000, disabled=True),
-            dcc.Store(id="pomo-store", data={"seconds": 1500, "active": False})
-        ]),
-
         # Footer
         html.Div(id="sidebar-footer", children=[
             html.Div(id="logout-btn", n_clicks=0, className="nav-item", style={"color": "#ef4444", "cursor": "pointer"}, children=[
@@ -420,56 +408,6 @@ def _dropdown_item(title, subtitle, icon, color):
             html.P(subtitle)
         ])
     ])
-
-
-@callback(
-    Output("pomo-store", "data"),
-    Output("pomo-interval", "disabled"),
-    Output("pomo-start-btn", "children"),
-    Output("pomo-start-btn", "className"),
-    Input("pomo-start-btn", "n_clicks"),
-    Input("pomo-reset-btn", "n_clicks"),
-    Input("pomo-interval", "n_intervals"),
-    State("pomo-store", "data"),
-    prevent_initial_call=True
-)
-def update_pomo(start_n, reset_n, n_int, data):
-    from dash import callback_context
-    ctx = callback_context
-    if not ctx.triggered: return no_update
-    
-    trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-    
-    if trigger_id == "pomo-reset-btn":
-        return {"seconds": 1500, "active": False}, True, html.Span("play_arrow", className="material-symbols-outlined"), "pomo-btn"
-    
-    if trigger_id == "pomo-start-btn":
-        new_active = not data["active"]
-        icon = "pause" if new_active else "play_arrow"
-        btn_class = "pomo-btn active" if new_active else "pomo-btn"
-        return {"seconds": data["seconds"], "active": new_active}, not new_active, html.Span(icon, className="material-symbols-outlined"), btn_class
-        
-    if trigger_id == "pomo-interval":
-        if data["active"] and data["seconds"] > 0:
-            new_secs = data["seconds"] - 1
-            return {"seconds": new_secs, "active": True}, False, no_update, no_update
-        elif data["seconds"] <= 0:
-            return {"seconds": 0, "active": False}, True, html.Span("notifications_active", className="material-symbols-outlined"), "pomo-btn"
-            
-    return no_update
-
-@callback(
-    Output("pomo-display", "children"),
-    Output("pomo-display", "className"),
-    Input("pomo-store", "data")
-)
-def display_pomo(data):
-    s = data["seconds"]
-    mins = s // 60
-    secs = s % 60
-    display = f"{mins:02d}:{secs:02d}"
-    class_name = "pomo-timer pomo-urgent" if s < 60 and s > 0 else "pomo-timer"
-    return display, class_name
 
 @callback(
     Output("confirm-random", "displayed"),
